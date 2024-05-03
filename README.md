@@ -1,2 +1,2 @@
-# Greaney2024
-Scripts for Greaney et al 2024
+# GreaneyRaredon2024
+Scripts for Greaney & Raredon et al 2024
