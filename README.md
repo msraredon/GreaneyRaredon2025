@@ -3,7 +3,7 @@ Scripts for Greaney & Raredon et al 2024
 
 "FASTQ_to_Seruat" contains scripts used for data alignment, extraction, and import into R.
 
-"Data_Filtration_Cleaning_Exploration" contains scripts used to filter, to clean, and to perform preliminary exploration of the data.
+"Data_Filtration_Cleaning" contains scripts used to filter and to clean the data.
 
 "Phenotype_Analysis" contains scripts used to perform class-wise integration, layered cell class and type annotations / metadata construction, transcriptomic statistical analysis, and transcriptomic figure construction for publication.
 
