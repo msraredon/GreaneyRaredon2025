@@ -9,7 +9,7 @@
 ##  and attempted minimally-invasive grouped clustering, including merge, ComBat, or CCA integration,
 ##  in that order. Once sufficient sample alignment was reached, the grouped objects were cleaned of
 ##  partial cells and doublets by manual cluster removal. Samples with no comparable counterparts were
-##  cluster-cleaned alone.
+##  cluster-cleaned alone. Only code that contributed to final processed objects is shown.
 
 ## Final object groupings and alignment methods:
 # 'BC1P3','BC1P6' = StartingBC (v2) - Integration

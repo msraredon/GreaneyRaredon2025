@@ -8,10 +8,11 @@
 
 #### Loading and assembling list of Seurat objects and metadata object
 ## Total objects to make (n=19):
-## BC1P3, BC1P6, RLMVEC, FB13, FB14, BAL, BCL5, BCEC2, BEF1, BEF2, BEF3,
-## BEF12, BEF14, BEF15, BEFM1, BEFM2, BEFM4, BEFM5, BEFM6
-## Note: Original analysis contained 6 extra samples which are not included in this
-##   manuscript. All scripts have been edited to run with the above listed samples.
+## BC1P3, BC1P6, RLMVEC, FB13, FB14, BAL, BCL5, BCEC2, BEF1, BEF2, BEF3, BEF12, BEF14, BEF15, BEFM1,
+##  BEFM2, BEFM4, BEFM5, BEFM6
+## Note: Original analysis contained 6 extra samples which are not included in this manuscript. All
+##  scripts have been edited to run with the above listed samples. Only code that contributed to final
+##  processed objects is shown.
 
 
 
