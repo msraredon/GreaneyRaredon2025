@@ -5,26 +5,33 @@
 
 
 
-## What I did:
-# For cleaning, I grouped by chemistry and sample similarity (cellular diversity),
-#       minimally-invasive grouped clustering: tried merge, ComBat, CCA Integration (or sample alone)
-#       stopped on sufficient alignment and cleaned by clusters
+## Note: For cleaning, we grouped by 10x chemistry and sample similarity (cellular diversity),
+##  and attempted minimally-invasive grouped clustering, including merge, ComBat, or CCA integration,
+##  in that order. Once sufficient sample alignment was reached, the grouped objects were cleaned of
+##  partial cells and doublets by manual cluster removal. Samples with no comparable counterparts were
+##  cluster-cleaned alone.
+
+## Final object groupings and alignment methods:
+# 'BC1P3','BC1P6' = StartingBC (v2) - Integration
+# 'FB13','FB14' = StartingFB (v2) - ComBat
+# 'BAL' (v3) = MacStart - Alone
+# 'RLMVEC' (v3) = ECStart - Alone
+# 'BEF1','BEF2','BCL5' = v2EngLungs - Integration
+# 'BCEC2','BEF3','BEF12','BEF14','BEF15' = v3EngLungs - Integration
+# 'BEFM1','BEFM2','BEFM4','BEFM5','BEFM6' = v3BEFMLungs - Integration
 
 
-# clean_1.R
+
+
 #### Cleaning objects by combining and removing trash clusters
-## Attempt merge
-# Not sufficient for anyone, don't show
-
-
-# clean_2.R
-#### Cleaning objects by combining and removing trash clusters
-## ComBat batch correction - FB13 & FB14
-
 # Load filtered objects
 load('./bef.metadata.filter1.2022-06-09.Robj')
 load('./bef.seurat.objs.filter1.2022-06-09.Robj')
 
+
+
+
+#### ComBat batch correction - FB13 & FB14
 # Setup sample combinations
 sample.names <- c('FB13','FB14')
 dataset <- c('StartingFB')
@@ -131,11 +138,8 @@ save(object,file = paste0(dir_name,".combat.",Sys.Date(),".Robj"))
 
 
 
-# clean_3.R
-#### Cleaning objects by combining and removing trash clusters
-## Seurat CCA Integration - BC1P3/BC1P6, BEF1/BEF2/BCL5,
+#### Seurat CCA Integration - BC1P3/BC1P6, BEF1/BEF2/BCL5,
 ##      BCEC2/BEF3/BEF12/BEF14/BEF15, BEFM1/BEFM2/BEFM4/BEFM5/BEFM6
-
 # Setup sample combinations
 sample.names <- c('BC1P3','BC1P6')
 dataset <- c('StartingBC')
@@ -246,12 +250,7 @@ dev.off()
 
 
 
-# clean_4.R
-#### Cleaning objects by combining and removing trash clusters
-## Clean individual objects - RLMVEC, MacAlv (BAL)
-
-
-## Clean individual objects - MacAlv & RLMVEC
+#### Clean individual objects - MacAlv & RLMVEC
 # Setup sample to clean
 sample.name <- c('RLMVEC')
 dataset <- c('StartingEC')
@@ -344,10 +343,7 @@ dev.off()
 
 
 
-# clean_5.R
-#### Cleaning objects by combining and removing trash clusters
-## Generate supplemental figure to visualize object cleaning
-
+#### Generate supplemental figure to visualize object cleaning
 # Setup sample combinations
 sample.names <- c('BEFM1','BEFM2','BEFM4','BEFM5','BEFM6')
 dataset <- c('v3BEFMLungs')
@@ -493,11 +489,7 @@ dev.off()
 
 
 
-# clean_6.R
-#### Cleaning objects by combining and removing trash clusters
-## Perform first round of cleaning by cluster removal
-
-
+#### Perform first round of cleaning by cluster removal
 ## Recreate clean-able object (Alone, ComBat, Integration)
 # Setup sample combinations
 sample.names <- c('BEFM1','BEFM2','BEFM4','BEFM5','BEFM6')
@@ -654,12 +646,8 @@ save(object,file = paste(dir_name,cleantype,"clean1",Sys.Date(),"Robj",sep="."))
 
 
 
-# clean_7.R
-#### Cleaning objects by combining and removing trash clusters
-## Split, finalize and save each individual object
+#### Split, finalize and save each individual object
 ## Generate final cleaning supplement
-
-
 ## Separate to individual, "clean" objects, and confirm/characterize
 # Pull combined sample objects
 sample.names <- c('BEFM1','BEFM2','BEFM4','BEFM5','BEFM6')
@@ -715,11 +703,11 @@ for (i in 1:length(objects)){
     dev.off()
 }
 
-# Leave objects up here, pull each one down individually through save
+# iterate through each object
 i <- 3
 object <- new.data[[i]]
 sample.name <- names(new.data[i])
-# Identify clusters to be removed & sus clusters
+# Identify clusters to be removed & label clusters suspicious (sus)
 trash <- c(0,6)
 sus <- c()
 new.labels <- levels(object$seurat_clusters)
@@ -799,5 +787,5 @@ png(paste0(sample.name,tag,'_cleancheck2.png'), width = 2000,height=2063)
 print(plot_grid(plotlist=plots,nrow=3))
 dev.off()
 
-# Save Clean individual objects
+# Save clean individual objects
 save(object,file = paste(sample.name,"clean",Sys.Date(),"Robj",sep="."))

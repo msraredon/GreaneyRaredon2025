@@ -6,12 +6,17 @@
 
 
 
-# make_initial_objects.R
 #### Loading and assembling list of Seurat objects and metadata object
 ## Total objects to make (n=19):
 ## BC1P3, BC1P6, RLMVEC, FB13, FB14, BAL, BCL5, BCEC2, BEF1, BEF2, BEF3,
 ## BEF12, BEF14, BEF15, BEFM1, BEFM2, BEFM4, BEFM5, BEFM6
+## Note: Original analysis contained 6 extra samples which are not included in this
+##   manuscript. All scripts have been edited to run with the above listed samples.
 
+
+
+
+#### Make seurat objects
 # Get File names
 file.names <- list.files(path = ".", pattern = "min.nUMI")
 
@@ -61,7 +66,6 @@ bef.metadata$Sample <- factor(bef.metadata$Sample,levels=c('BC1P3','BC1P6','RLMV
 
 
 
-# prefiltration_plots.R
 #### Initial QC plots post-30k rank cutoff, pre-filtration and pre-clean
 ## Plot full dataset in single QC violin plot
 png(filename = 'BEF_nCount_RNA_Unfiltered.png',width = 20,height = 10,res = 200,units = 'in')
@@ -204,7 +208,6 @@ dev.off()
 
 
 
-# filtration_1.R
 #### Choosing filtration cutoffs for each object 
 ## Functions for iterating on nCount_RNA, nFeature_RNA & percent.mt filtration parameters
 
@@ -313,7 +316,6 @@ TriplePercentSplPlotter(sample.name=sample.name,min.counts=min.counts,min.featur
 
 
 
-# filtration_2.R
 #### Choosing filtration cutoffs for each object
 ## Iterate filtration parameters and visualize effects on data quality and clustering
 
@@ -505,8 +507,6 @@ dev.off()
 
 
 
-
-# filtration_3.R
 #### Choosing filtration cutoffs for each object
 ## Generate supplemental figure to visualize initial filtration
 
@@ -696,7 +696,6 @@ dev.off()
 
 
 
-# filtration_4.R
 #### Choosing filtration cutoffs for each object
 ## Save new object with selected filtration parameters
 

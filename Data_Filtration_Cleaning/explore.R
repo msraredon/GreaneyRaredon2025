@@ -5,17 +5,15 @@
 
 
 
-## What I did: tried merge, mapping, and CCA integration
-##  ultimately used CCA to yield class objects
-##  ran several times with different combinations of cells
-##  gotta find the right ones, back-track from figures to find correct object
-##  just include class-wise integrations and anything else fun
+## Note: We tried generating unified class objects by merge, mapping, or CCA integration, in that order.
+##  Sufficient sample alignment was only achieved by integration. Integration was iterated across multiple
+##  sample combinations, including with samples that are not included in this manuscript. All scripts have
+##  been edited to run only with published samples.
 
 
-# explore_1.R
-#### Initial exploration of objects
-## Assembling relevant datasets and lists of objects
 
+
+#### Assembling relevant datasets and lists of objects
 ## Generate list of all individual cleaned objects
 allobjects <- c("BC1P3","BC1P6","RLMVEC","FB13","FB14","BAL","BCL5","BCEC2","BEF1","BEF2","BEF3",
     "BEF12","BEF14","BEF15","BEFM1","BEFM2","BEFM4","BEFM5","BEFM6")
@@ -32,7 +30,7 @@ names(seurat.data) <- allobjects
 save(seurat.data,file = paste0("bef.seurat.objs.",Sys.Date(),".Robj"))
 
 
-## Lists by cell class - Epithelium, Endothelium, Mesenchyme, Immune
+## Object lists by cell class - Epithelium, Endothelium, Mesenchyme, Immune
 epi <- list() ; epi.names <- c()
 endo <- list() ; endo.names <- c()
 mes <- list() ; mes.names <- c()
@@ -106,18 +104,17 @@ plot(p)
 dev.off()
 
 
-# explore_2.R
-#### Try integrating all objects together
-## Integration by CCA and Mapping
-# Not essential, skip \\
+
+
+#### Generating Epithelial object
+
+## Edit this elsewhere first...
+
 
 
 #### EPITHELIUM ####
 
-# explore_epi_1.R
-#### Initial exploration of all Epithelium
-## Re-clustering individual class objects & FeaturePlots
-# Non-essential exploration \\
+
 
 
 # explore_epi_2.R
