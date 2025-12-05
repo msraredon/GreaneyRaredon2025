@@ -1,5 +1,5 @@
 #### CLEAN
-#### Code for publication unifying all 'clean' scripts
+#### Code for publication describing cleaning of filtered object
 #### Replicable method for taking filtered objects to fully cleaned objects
 
 
@@ -343,7 +343,7 @@ dev.off()
 
 
 
-#### Generate supplemental figure to visualize object cleaning
+#### Generate summary figure to visualize object cleaning
 # Setup sample combinations
 sample.names <- c('BEFM1','BEFM2','BEFM4','BEFM5','BEFM6')
 dataset <- c('v3BEFMLungs')
@@ -436,19 +436,14 @@ midrow2 <- plot_grid(p6,p7,ncol=2,labels = c('F','G'),rel_widths = c(1,2),label_
 
 # Identify clusters to be removed
 trash <- c(1,4,8,12,16,19)
-contaminant <- c()  # cells of unexpected class
 new.labels <- levels(object$seurat_clusters)
 for (i in 1:length(trash)){
     x <- which(new.labels == trash[i])
     new.labels[x] <- c('Trash')
 }
-for (i in 1:length(contaminant)){
-    x <- which(new.labels == contaminant[i])
-    new.labels[x] <- c('Contaminant')
-}
 names(new.labels) <- levels(object$seurat_clusters)
 object <- RenameIdents(object, new.labels)
-p8 <- UMAPPlot(object,cols = c('Trash' = 'red','Contaminant' = 'dodgerblue')) + NoAxes() +
+p8 <- UMAPPlot(object,cols = c('Trash' = 'red')) + NoAxes() +
         labs(title = c('Clusters to Remove'),caption = paste("Remove:",paste(trash,collapse=', ')))  +
         theme(plot.title = element_text(size = 24,hjust = 0),plot.caption = element_text(size = 18,color='red'))
 p8 <- plot_grid(NULL,p8,nrow=2,rel_heights = c(1,9))
@@ -490,7 +485,7 @@ dev.off()
 
 
 #### Perform first round of cleaning by cluster removal
-## Recreate clean-able object (Alone, ComBat, Integration)
+## Carry forward combined objects generated above (Alone, ComBat, Integration)
 # Setup sample combinations
 sample.names <- c('BEFM1','BEFM2','BEFM4','BEFM5','BEFM6')
 dataset <- c('v3BEFMLungs')
@@ -536,23 +531,18 @@ object <- FindClusters(object, resolution = res)
 object <- RunUMAP(object, reduction = "pca", dims = 1:pcs)
 
 # Identify clusters to be removed
-trash <- c(1,4,8,12,16,19)
-contaminant <- c()
+trash <- c(1,4,8,12,16,19)  # low-information clusters
 new.labels <- levels(object$seurat_clusters)
 for (i in 1:length(trash)){
     x <- which(new.labels == trash[i])
     new.labels[x] <- c('Trash')
 }
-for (i in 1:length(contaminant)){
-    x <- which(new.labels == contaminant[i])
-    new.labels[x] <- c('Contaminant')
-}
 names(new.labels) <- levels(object$seurat_clusters)
 object <- RenameIdents(object, new.labels)
-object$rnd1_contaminants <- Idents(object)
+object$rnd1_cleaning <- Idents(object)
 object
 
-# Remove trash, preserve contaminants, re-cluster
+# Remove trash, re-cluster
 object <- subset(object, idents = c('Trash'), invert = T)
 
 # Alone -
@@ -627,16 +617,9 @@ p6 <- FeaturePlot(object, c('Cdh5','Col1a1','Epcam','Ptprc'), label = T,repel=T)
 p7 <- VlnPlot(object, c('Cdh5','Col1a1','Epcam','Ptprc'),ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())
 midrow2 <- plot_grid(p6,p7,NULL,ncol=3,labels = c('F','G'),rel_widths = c(2,2,1),label_size = 40)
 
-# Visualize remaining contaminants
-p8 <- UMAPPlot(object,group.by = 'rnd1_contaminants',cols = c('Contaminant' = 'dodgerblue')) + NoAxes() +
-        labs(title = c('Remaining Contaminant Populations')) + theme(plot.title = element_text(size = 24,hjust = 0))
-p8 <- plot_grid(NULL,p8,nrow=2,rel_heights = c(1,9))
-
-lastrow <- plot_grid(p8,NULL,NULL,ncol=3,labels = c('H'),label_size = 40)
-
 # Cowplot all panels
-plots <- list(toprow,midrow,midrow2,lastrow)
-png(paste0(dir_name,tag2,'_clean_allplots.png'), width = 2000,height=2750)
+plots <- list(toprow,midrow,midrow2)
+png(paste0(dir_name,tag2,'_clean_allplots.png'), width = 2000,height=2000)
 plot_grid(plotlist=plots,ncol=1)
 dev.off()
 
@@ -647,7 +630,7 @@ save(object,file = paste(dir_name,cleantype,"clean1",Sys.Date(),"Robj",sep="."))
 
 
 #### Split, finalize and save each individual object
-## Generate final cleaning supplement
+## Generate final cleaning summary plots
 ## Separate to individual, "clean" objects, and confirm/characterize
 # Pull combined sample objects
 sample.names <- c('BEFM1','BEFM2','BEFM4','BEFM5','BEFM6')
@@ -707,7 +690,7 @@ for (i in 1:length(objects)){
 i <- 3
 object <- new.data[[i]]
 sample.name <- names(new.data[i])
-# Identify clusters to be removed & label clusters suspicious (sus)
+# Identify clusters to be removed & label suspicious clusters that might need to be removed (sus)
 trash <- c(0,6)
 sus <- c()
 new.labels <- levels(object$seurat_clusters)
@@ -725,7 +708,7 @@ object$rnd2_suspicious <- Idents(object)
 p1 <- UMAPPlot(object,group.by = 'rnd2_suspicious',cols = c('sus' = 'springgreen4','Trash' = 'red')) +
         labs(title = c('Remaining Contaminant Populations')) + theme(plot.title = element_text(size = 24,hjust = 0))
 
-# Remove trash, preserve contaminants, re-cluster
+# Remove trash, re-cluster
 object <- subset(object, idents = c('Trash'), invert = T)
 
 tag <- paste('.pcs',pcs,'res',res,sep='.')

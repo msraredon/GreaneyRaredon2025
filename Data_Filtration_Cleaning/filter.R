@@ -1,5 +1,5 @@
 #### FILTER
-#### Code for publication unifying all 'filtration' scripts
+#### Code for publication describing initial object filtration
 #### Replicable method for taking STARSolo DGEs to filtered objects
 ####    including data filtration supplemental figures
 

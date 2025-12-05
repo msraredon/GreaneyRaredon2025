@@ -6,8 +6,8 @@
 
 
 ## Note: We tried generating unified class objects by merge, mapping, or CCA integration, in that order.
-##  Sufficient sample alignment was only achieved by integration. Integration was iterated across multiple
-##  sample combinations, including with samples that are not included in this manuscript. All scripts have
+##  In all classes, sufficient sample alignment was only achieved by integration. Integration was iterated across 
+##  multiple sample combinations, including with samples that are not included in this manuscript. All scripts have
 ##  been edited to run only with published samples. Only code that contributed to final processed objects is shown.
 
 
