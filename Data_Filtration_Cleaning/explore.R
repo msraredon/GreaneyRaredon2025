@@ -5,10 +5,11 @@
 
 
 
-## Note: We tried generating unified class objects by merge, mapping, or CCA integration, in that order.
-##  In all classes, sufficient sample alignment was only achieved by integration. Integration was iterated across 
+## Note: We tried generating unified class objects by merge, reference mapping, or CCA integration, in that order.
+##  In all classes, useful sample alignment was only achieved by integration. Integration was iterated across 
 ##  multiple sample combinations, including with samples that are not included in this manuscript. All scripts have
 ##  been edited to run only with published samples. Only code that contributed to final processed objects is shown.
+##  A sample of initial exploratory analyses are also included.
 
 
 
@@ -106,268 +107,308 @@ dev.off()
 
 
 
-#### Generating Epithelial object
-
-## Edit this elsewhere first...
-
-
-
 #### EPITHELIUM ####
 
-
-
-
-# explore_epi_2.R
-#### Initial exploration of all Epithelium
-## CCA Integration & Merge
-# Keep? or obsolete integration?
-
-## Load all epithelium
-setwd("/nobackup1/greaneya/DGEs_30K_Rank_Cutoff/Epi")
+### Initial exploration of epi objects
+## Initial embeddings of each object
+# Load all epithelium
 load("./epi.seurat.objs.2022-07-27.Robj")
 
+# Cowplot of every epithelial object UMAP
+cols <- hue_pal()(4)
+class_colors <- c('Epithelium'=cols[2],'Endothelium'=cols[3],'Mesenchyme'=cols[1],'Immune'=cols[4])
 
-# explore_epi_3.R
-#### Initial exploration of all Epithelium
-## Integration by Reference Mapping
-# Omit bc didn't work/use \\
+# Order objects
+allobjects <- c("BC1P3","BC1P6","FB13","FB14","MacAlv","BCL5","BCEC2","BEF1","BEF2","BEF3",
+    "BEF12","BEF14","BEF15","BEFM1","BEFM2","BEFM4","BEFM5","BEFM6","Native")
+epi <- epi[allobjects]
 
-
-# explore_epi_4.R
-#### Exploration of all Epithelium
-## Integration by Reference Mapping
-# Omit bc didn't work/use \\
-
-
-# explore_epi_5.R
-#### Exploration of Engineered Epithelium
-## Re-do CCA Integration
-# Keep? or obsolete integration?
-
-
-# explore_epi_6.R
-#### Exploration of Engineered Epithelium
-## Embedding-agnostic marker comparisons
-# Keep? or non-essential exploration?
-
-
-# focus_epi_1.R
-#### Focused Analysis of Engineered Epithelium
-## BEFM1 Gold-standard Evaulation
-# Non-essential exploration \\
-
-
-# focus_epi_2.R
-#### Focused Analysis of Engineered Epithelium
-## Archetype Analysis of Integrated Cells
-
-## Try grouping clusters
-Idents(object) <- object$seurat_clusters
-object <- RenameIdents(object,
-        '0'='Krt5',
-        '1'='Trans',
-        '2'='Hopx',
-        '3'='Hopx',
-        '4'='Krt5',
-        '5'='Trans',
-        '6'='Krt5',
-        '7'='Trans',
-        '8'='Cycling',
-        '9'='Trans',
-        '10'='Cycling',
-        '11'='Trans',
-        '12'='Other',
-        '13'='Hopx',
-        '14'='Secretory',
-        '15'='Trans')
-object$grouping <- Idents(object)
-
-Idents(cl12) <- cl12$seurat_clusters
-cl12 <- RenameIdents(cl12,
-        '0'='EMT',
-        '1'='BASC',
-        '2'='Krt5',
-        '3'='Endothelium',
-        '4'='Endothelium',
-        '5'='Immune',
-        '6'='BASC',
-        '7'='Hopx')
-cl12$grouping <- Idents(cl12)
-
-
-# focus_epi_3.R
-#### Focused Analysis of Engineered Epithelium
-## Trying to Redo Archetype Analysis of Integrated Cells
-
-## Remove Endo/Imm doublets, recluster (in focus_epi_2.R)
-Idents(object) <- object$grouping2
-object <- subset(object, idents = c('Endothelium','Immune'), invert = T)
-object$grouping2 <- Idents(object)
-object$putative_labels <- object$grouping2
-
-
-# focus_epi_4.R
-#### Focused Analysis of Engineered Epithelium
-## Archetype Analysis of Integrated Cells, Continued
-
-## Function to query genes of a GO term
-GOgenes2 <- function(goid,totalgenelist,totalmappedidlist){
-    goid_locale <- sapply(totalgenelist, function(x) grep(paste('"id": "GO:',goid,sep=''), totalgenelist[ ,1]))
-    label_locale <- goid_locale + 1
-    label <- gsub("                    \"label\": \"", "", totalgenelist[label_locale,])
-    label <- gsub(" ","_",label)
-    label <- gsub("\"","",label)
-    label <- gsub("label:_","",label)
-    label <- gsub("-","_",label)
-    mappedidlist_locale <- totalmappedidlist[totalmappedidlist<goid_locale, ]
-    mappedidlist_locale <- tail(mappedidlist_locale, n = 1)
-
-    mappedgenes <- c()
-    for (i in (mappedidlist_locale+1):nrow(totalgenelist)) {
-        if (totalgenelist[i, ] != paste("]},")) {
-            newgene <- gsub("[^a-zA-Z0-9]", "", totalgenelist[i, ])
-            mappedgenes <- c(mappedgenes,newgene)
-        } else {
-            break
-        }
-    }
-    mappedgenes <- gsub('^Mt', 'Mt-', mappedgenes)
-    mappedgenes <<- mappedgenes
-    label <<- label
+# Plot without re-embedding
+myplots <- vector('list',length(epi))
+for (i in 1:length(epi)){
+    object <- epi[[i]]
+    sample.name <- names(epi[i])
+    message(sample.name)
+    p <- UMAPPlot(object,group.by = 'class',cols = class_colors) +
+            labs(title = paste(sample.name,'- Epithelium'), subtitle=paste('nCells =',ncol(object))) +
+            theme(plot.title = element_text(size = 24,hjust = 0))
+    myplots[[i]] <- p
 }
 
+png(paste("epi_all_umaps2.png"), width = 3000,height=2000)
+print(plot_grid(plotlist=myplots,ncol=6))
+dev.off()
 
-## Categorical Investigation - by Archetype
-load('./epi.seurat.objs.int.marks.2022-12-15.Robj')
-object <- ScaleData(object,features = rownames(object))
-cluster <- c('Krt5')
-# Single GO Category (per cluster)
-go_cat <- c('0031099')
-
-totalgenelist <- as.data.frame(read_excel("epi.seurat.objs.int.marks.2022-12-15.xlsm", sheet = paste(cluster,'(2)')))
-totalmappedidlist <- sapply(totalgenelist, function(x) grep(c('mapped_id_list'), totalgenelist[ ,1]))
-
-mygenes <- list() ; totalgenes <- c() ; names <- c()
-for (i in 1:length(go_cat)) {
-    goid <- go_cat[i]
-    GOgenes2(goid=goid,totalgenelist=totalgenelist,totalmappedidlist=totalmappedidlist)
-    mygenes[[i]] <- mappedgenes
-    totalgenes <- unique(c(totalgenes,mappedgenes))
-    names <- c(names,label)
+# Plot with re-embedding (skip bc too small: FB13, FB14, MacAlv)
+epi2 <- epi[c("BC1P3","BC1P6","BCL5","BCEC2","BEF1","BEF2","BEF3","BEF12","BEF14","BEF15","BEFM1",
+    "BEFM2","BEFM4","BEFM5","BEFM6","Native")]
+pcs <- 10
+myplots <- vector('list',length(epi2))
+new.epi <- list() ; final.names <- c()
+for (i in 1:length(epi2)) {
+    object <- epi2[[i]]
+    sample.name <- names(epi2[i])
+    message(sample.name)
+    object <- NormalizeData(object)
+    object <- FindVariableFeatures(object)
+    object <- ScaleData(object)
+    object <- RunPCA(object, npcs = 50, verbose = F)
+    object <- FindNeighbors(object, dims = 1:pcs)
+    object <- FindClusters(object, resolution = 0.5)
+    object <- RunUMAP(object, reduction = "pca", dims = 1:pcs)
+    p <- UMAPPlot(object,label = T) + labs(title = paste(sample.name,'- Epithelium'),subtitle = paste("PC's =",pcs,"\nRes = 0.5",'\nCells =',ncol(object))) +
+        NoLegend() + theme(plot.title = element_text(size = 24))
+    myplots[[i]] <- p
+    new.epi[[i]] <- object
+    final.names[[i]] <- sample.name
 }
-names(mygenes) <- names
+names(new.epi) <- final.names
+epi3 <- c(new.epi,epi[c('FB13','FB14','MacAlv')])
+epi3 <- epi3[order(names(epi))]
 
-genes.use <- intersect(totalgenes,rownames(object))
-object <- AddModuleScore(object,features=list(genes.use),name=paste(label,'score',sep="."))
-Idents(object) <- object$putative_labels
-
-# Prepare plots
-go <- as.data.frame(read_excel("epi.seurat.objs.int.marks.2022-12-15.xlsm", sheet = cluster))
-go <- go[grep(go_cat, go[,1]), ]
-go <- go[,c(1,6,7,8)] 
-colnames(go)[2:4] = c('fold Enrichment','raw P-value','FDR')
-p1 <- tableGrob(go,theme = ttheme_minimal(base_size = 16))
-
-gomarks <- markers[which(markers$cluster == cluster),]
-gomarks <- gomarks[gomarks$gene %in% totalgenes, ]
-gomarks <- gomarks[1:25, ]
-topmarks <- round(gomarks[, 1:5], digits = 4)
-topmarks$cluster <- gomarks$cluster
-topmarks$gene <- gomarks$gene
-topmarks$ratio <- round(gomarks[1:25, ]$ratio, digits = 4)
-topmarks <- na.omit(as.data.frame(topmarks))
-p2 <- tableGrob(topmarks,theme = ttheme_minimal(base_size = 16))
-
-toprow <- plot_grid(p1,p2,ncol=2,
-    labels=c(paste('Select GO Category of Differentially Upregulated Genes in',cluster),
-        paste('Upregulated Genes in',cluster)),label_size = 25,hjust = 0, label_x = 0.01)
-
-p3 <- FeaturePlot(object,paste(label,'score1',sep="."),label=T,repel=T) + labs(title = paste('Engineered Epi -',label,'score')) +
-    theme(plot.title = element_text(size = 24))
-p4 <- VlnPlot(object,paste(label,'score1',sep="."),pt.size = 0,group.by='Dataset2') + 
-    theme(axis.title.x = element_blank()) + NoLegend()
-p <- VlnPlot(object,paste(label,'score1',sep="."),pt.size = 0,group.by='putative_labels') + 
-    theme(axis.title.x = element_blank()) + NoLegend()
-q <- VlnPlot(object,paste(label,'score1',sep="."),pt.size = 0,group.by='Sample') + 
-    theme(axis.title.x = element_blank()) + NoLegend()
-p5 <- plot_grid(p,q,ncol=1)
-midrow <- plot_grid(p3,p4,p5,ncol=3)
-
-# Violin plots of all genes in a Category of GO's
-gogenes <- intersect(totalgenes,rownames(object))
-cl_marks <- markers[which(markers$cluster == cluster),]
-gomarks <- cl_marks[cl_marks$gene %in% gogenes, ]
-gomarks <- gomarks[order(-gomarks$avg_log2FC),]
-topmarks <- na.omit(gomarks[1:36, ])
-genelist <- topmarks$gene
-
-myplots <- vector('list',length(genelist))
-for (i in 1:length(genelist)) {
-    gene <- genelist[i]
-    message(gene)
-    myplots[[i]] <- local({
-        i <- i
-        p1 <- VlnPlot(object,gene,pt.size = 0,group.by='Sample') + xlab('') + ylab('') + NoLegend() +
-            theme(axis.text.x=element_blank(),
-            axis.text.y = element_text(size = 28, color = 'black'),
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(),
-            panel.background = element_blank(),
-            axis.title.x = element_blank(),
-            axis.title.y = element_blank(),
-            axis.line = element_line(color = "black"),
-            plot.title = element_text(size = 38, hjust = 0.5))
-    })
-}
-lastrow <- plot_grid(plotlist=myplots,ncol=6,nrow=6)
-
-# Cowplot all panels
-plots <- list(toprow,midrow,lastrow)
-png(paste(dir_name,cluster,label,'allplots.png',sep="_"), width = 2000,height=2750)
-plot_grid(plotlist=plots,ncol=1,rel_heights=c(1,1,2))
+png(paste("epi_all_umaps_22.png"), width = 3000,height=2000)
+print(plot_grid(plotlist=myplots,ncol=6))
 dev.off()
 
 
-# focus_epi_5.R
-#### Focused Analysis of Engineered Epithelium
-## Native Benchmark Analyses, to align with other cell classes
-# Omit bc didn't work/use \\
+## Explore top native markers via FeaturePlots
+natepi <- epi$Native
+Idents(natepi) <- natepi$CellType_Final
+
+markers <- FindAllMarkers(natepi, only.pos = T)
+markers$ratio <- markers$pct.1/markers$pct.2
+markers <- markers[order(-markers$ratio),]
+
+# Epithelial markers of interest:
+# Epi: ['Krt5','Hopx','Aqp5','Sftpc']
+# ATII: 'Sftpc','Sftpb','Defb4','Lyz2'
+# ATI: 'Ager','Aqp5','Hopx','Pdpn'
+# Basal: 'Krt5','Krt8','Igfbp2','Sox2'
+# Ciliated: 'Ak9','Pifo','Ccdc153'
+# Secretory: 'Scgb1a1','Rarres1','Muc20','Clca1'
+# Tuft1: 'Dclk1','Espn','Sox9','Pou2f3'
+# Tuft2: 'Dclk1','Trpm5','Sox9','Lgr5'
+# BASC: 'Sftpc','Scgb1a1','Sox9','Lgr5'
+
+# Makes a sheet of individual gene fps across all objects
+genes <- c('Krt5','Hopx','Aqp5','Sftpc')
+myplots <- vector('list',length(epi3))
+for (i in 1:length(genes)) {
+    gene <- genes[i]
+    message(gene)
+    for (j in 1:length(epi3)) {
+        object <- epi3[[j]]
+        sample.name <- names(epi3[j])
+        message(sample.name)
+        p <- FeaturePlot(object,features=gene,label = F) &
+            labs(title = paste(sample.name,'-',gene))
+        myplots[[j]] <- p
+    }
+    png(paste("epi_all_fp_",gene,".png",sep=''),width = 2000,height=3000)
+    print(plot_grid(plotlist=myplots,ncol=4))
+    dev.off()
+}
+
+# Makes a sheet of a set of gene fps across all objects
+type <- c('ATI')
+genes <- c('Ager','Aqp5','Hopx','Pdpn')
+myplots1 <- vector('list',length(genes))
+myplots2 <- vector('list',length(epi3))
+for (i in 1:length(epi3)) {
+    object <- epi3[[i]]
+    sample.name <- names(epi3[i])
+    message(sample.name)
+    for (j in 1:length(genes)) {
+        gene <- genes[j]
+        message(gene)
+        p <- FeaturePlot(object,features=gene,label = F) +
+            labs(title = paste(sample.name,'-',gene))
+        myplots1[[j]] <- p
+    }
+    myplots2[[i]] <- plot_grid(plotlist=myplots1,ncol=2)
+}
+
+plot <- plot_grid(plotlist=myplots2,ncol=4)
+title <- ggdraw() + draw_label(type,fontface = 'bold',size = 24,x = 0,hjust = 0)
+png(paste("epi_all_fp_",type,".png",sep=''),width = 2000,height=3000)
+print(plot_grid(title,plot,ncol=1,rel_heights = c(0.1, 10)))
+dev.off()
 
 
-# focus_epi_6.R
-#### Focused Analysis of Engineered Epithelium
-## Pseudotime via Slingshot
-# Non-essential exploration \\
+## Explore top native markers via Heatmaps
+load("/nobackup1/greaneya/DGEs_30K_Rank_Cutoff/Native/native.marks.2022-08-02.Robj")
+
+# AverageExpression Heatmaps
+# Select top genes per native epi type
+table(new.epi$Native$CellType_Final)
+native.epi.names <- c('ATII','ATI','Tuft','Ciliated','Secretory','ATII-ATI','BASC')
+marks.short <- markers %>% group_by(cluster) %>% top_n(50, avg_log2FC) %>%
+    select(cluster, gene, avg_log2FC, p_val,ratio) %>%
+    arrange(cluster, desc(avg_log2FC))
+
+# Loop to generate heatmaps of each native cell type with engineered (wo negative native ctrls)
+epi4 <- new.epi[c("BC1P3","BC1P6","BCEC2","BCL5","BEF1","BEF12","BEF14","BEF15","BEF2","BEF3",
+    "BEFM1","BEFM2","BEFM4","BEFM5","BEFM6")]  # minus native, tiny samples
+myplots <- vector('list', length(native.epi.names))
+unityNormalize <- function(x){(x-min(x))/(max(x)-min(x))}
+for (i in 1:length(native.epi.names)) {
+    hm.short <- list()
+    type <- native.epi.names[i]
+    message(type)
+    identities <- c(type,names(epi4))
+    ctrl <- subset(new.epi$Native,subset = CellType_Final == c(type))
+    hm.object <- c(ctrl,epi4)
+    names(hm.object) <- identities
+    topgenes <- marks.short[which(marks.short$cluster==type), ]
+    genes.use <- topgenes$gene
+    for (j in 1:length(hm.object)) {
+        object <- hm.object[[j]]
+        genes.int <- intersect(topgenes$gene,rownames(object))
+        genes.use <- intersect(genes.use,genes.int)
+    }
+    genes.use <- head(genes.use,50)
+    for (k in 1:length(hm.object)) {
+        object <- hm.object[[k]]
+        Idents(object) <- object$Sample
+        hm.short[[k]] <- subset(object,downsample = 120)
+    }
+    hm.merge <- merge(x=hm.short[[1]],y=hm.short[2:length(hm.short)])
+    hm.merge <- ScaleData(hm.merge,features = genes.use)
+    hm.avg <- AverageExpression(hm.merge,assays='RNA',slot='scale.data',features=genes.use)
+    hm.avg <- t(scale(t(hm.avg$RNA)))
+    hm.avg <- t(apply(as.matrix(hm.avg), 1, unityNormalize))
+    colnames(hm.avg)[which(colnames(hm.avg)=='Native')] <- type
+    hm.avg <- hm.avg[,c(identities)]
+    message(dim(hm.avg))
+
+    colors.inferno <- colorRamp2(breaks = c(seq(min(hm.avg),max(hm.avg),length.out=60)), inferno(n=60), space = "RGB")
+    myplots[[i]] <- local({
+        i <- i
+        p1 <- Heatmap(as.matrix(hm.avg),
+                                col= colors.inferno,
+                                row_names_gp = gpar(fontsize = 18),
+                                show_column_dend = T,
+                                clustering_method_columns = 'complete',
+                                cluster_rows=T,
+                                cluster_columns=T,
+                                cluster_column_slices=F,
+                                show_column_names=T,
+                                column_names_side = "top",
+                                column_dend_side = "bottom",
+                                column_names_gp = gpar(fontsize = 30),
+                                show_row_names = T,
+                                show_heatmap_legend = F)
+    })
+    png(paste('nativeepi_heatmap_',type,'_2.png',sep=""), width = 800, height = 1000)  #400,1000
+    draw(myplots[[i]],padding = unit(c(2, 2, 18, 2), "mm"))  #12
+    dev.off()
+}
 
 
-# focus_epi_7.R
-#### Focused Analysis of Engineered Epithelium
-## Remove TXP3_L Sample (output: epi.seurat.objs.int.2023-01-26.Robj (wo TXP_L, *new putative_labels))
-
-## Load integrated object with putative labels
-setwd("/nobackup1/greaneya/DGEs_30K_Rank_Cutoff/Epi")
+## Embedding-agnostic marker comparisons
+# Merge without embedding
+objects <- epi[c("BC1P3","BC1P6","BCL5","BCEC2","BEF1","BEF2","BEF3","BEF12","BEF14","BEF15","BEFM1","BEFM2",
+    "BEFM4","BEFM5","BEFM6")]
 dir_name <- c('epi')
-load('./epi.seurat.objs.int.2022-12-15.Robj')  # grouped, w starting cells, regressed
 
-# Remove 'TXP3_L' sample
-Idents(object) <- object$Sample
-object <- subset(object,idents = 'TXP3_L',invert = T)
-
-object$Sample <- droplevels(object$Sample)
-object$Sample <- factor(object$Sample,levels=c('BC1P3','BC1P6','BCL5','BCEC2','BEF1',
-    'BEF2','BEF3','BEF12','BEF14','BEF15','BEFM1','BEFM2','BEFM4','BEFM5','BEFM6'))
-object$Dataset2 <- droplevels(object$Dataset2)
-object$Dataset2 <- factor(object$Dataset2,levels=c('Start','Mono','Co','Tri_E','Tri_L',
-    'Quad_E','Quad_L'))
-
-
-## Perform an integrated analysis on remaining cells
-DefaultAssay(object) <- "integrated"
+object <- merge(x = objects[[1]], y = objects[2:length(objects)])
+object <- NormalizeData(object)
+object <- FindVariableFeatures(object)
 object <- ScaleData(object)
 object <- RunPCA(object, npcs = 100, verbose = F)
 
-pcs <- 37
-res <- 0.6
+object$Sample <- factor(object$Sample,levels = c("BC1P3","BC1P6","BCL5","BCEC2","BEF1","BEF2","BEF3","BEF12",
+    "BEF14","BEF15","BEFM1","BEFM2","BEFM4","BEFM5","BEFM6"))
+
+Idents(object) <- object$Sample
+object <- RenameIdents(object,
+        "BC1P3"='Start',
+        "BC1P6"='Start',
+        "BCL5"='Mono',
+        "BCEC2"='Co',
+        "BEF1"='Tri',
+        "BEF2"='Tri',
+        "BEF3"='Tri',
+        "BEF12"='Tri',
+        "BEF14"='Tri',
+        "BEF15"='Tri',
+        "BEFM1"='Quad',
+        "BEFM2"='Quad',
+        "BEFM4"='Quad',
+        "BEFM5"='Quad',
+        "BEFM6"='Quad')
+object$Dataset2 <- Idents(object)
+
+DefaultAssay(object) <- "RNA"
+p1 <- VlnPlot(object,c('Krt5','Hopx','Aqp5','Sftpc'),group.by='Sample',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # Epi
+p2 <- VlnPlot(object,c('Sftpc','Sftpb','Defb4','Lyz2'),group.by='Sample',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # ATII
+p3 <- VlnPlot(object,c('Ager','Aqp5','Hopx','Pdpn'),group.by='Sample',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # ATI
+p4 <- VlnPlot(object,c('Krt5','Krt8','Igfbp2','Sox2'),group.by='Sample',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # Basal
+p5 <- VlnPlot(object,c('Ak9','Pifo','Ccdc153','Top2a'),group.by='Sample',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # Ciliated
+p6 <- VlnPlot(object,c('Scgb1a1','Rarres1','Muc20','Clca1'),group.by='Sample',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # Secretory
+p7 <- VlnPlot(object,c('Dclk1','Espn','Sox9','Pou2f3'),group.by='Sample',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # Tuft1
+p8 <- VlnPlot(object,c('Dclk1','Trpm5','Sox9','Lgr5'),group.by='Sample',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # Tuft2
+p9 <- VlnPlot(object,c('Sftpc','Scgb1a1','Sox9','Lgr5'),group.by='Sample',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # BASC
+toprow <- plot_grid(p1,p2,p3,ncol=3)
+midrow2 <- plot_grid(p4,p5,p6,ncol=3)
+midrow4 <- plot_grid(p7,p8,p9,ncol=3)
+
+p10 <- VlnPlot(object,c('Krt5','Hopx','Aqp5','Sftpc'),group.by='Dataset2',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # Epi
+p11 <- VlnPlot(object,c('Sftpc','Sftpb','Defb4','Lyz2'),group.by='Dataset2',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # ATII
+p12 <- VlnPlot(object,c('Ager','Aqp5','Hopx','Pdpn'),group.by='Dataset2',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # ATI
+p13 <- VlnPlot(object,c('Krt5','Krt8','Igfbp2','Sox2'),group.by='Dataset2',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # Basal
+p14 <- VlnPlot(object,c('Ak9','Pifo','Ccdc153','Top2a'),group.by='Dataset2',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # Ciliated
+p15 <- VlnPlot(object,c('Scgb1a1','Rarres1','Muc20','Clca1'),group.by='Dataset2',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # Secretory
+p16 <- VlnPlot(object,c('Dclk1','Espn','Sox9','Pou2f3'),group.by='Dataset2',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # Tuft1
+p17 <- VlnPlot(object,c('Dclk1','Trpm5','Sox9','Lgr5'),group.by='Dataset2',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # Tuft2
+p18 <- VlnPlot(object,c('Sftpc','Scgb1a1','Sox9','Lgr5'),group.by='Dataset2',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())  # BASC
+midrow1 <- plot_grid(p10,p11,p12,ncol=3)
+midrow3 <- plot_grid(p13,p14,p15,ncol=3)
+lastrow <- plot_grid(p16,p17,p18,ncol=3)
+
+# Cowplot all panels
+plots <- list(toprow,midrow1,midrow2,midrow3,midrow4,lastrow)
+png(paste(dir_name,'_merge_allplots.png',sep=""), width = 2000,height=2750)
+plot_grid(plotlist=plots,ncol=1)
+dev.off()
+
+save(object,file = paste("epi.seurat.objs.mer.",Sys.Date(),".Robj",sep=""))
+
+
+
+### Generating integrated object of all Epithelium
+# Normal Seurat CCA Integration of all engineered objects, without native or tiny samples
+objects <- epi[c("BC1P3","BC1P6","BCL5","BCEC2","BEF1","BEF2","BEF3","BEF12","BEF14","BEF15",
+    "BEFM1","BEFM2","BEFM4","BEFM5","BEFM6")]
+dir_name <- c('epi')
+objects <- lapply(X = objects, FUN = function(x) {
+    x <- NormalizeData(x)
+    x <- FindVariableFeatures(x,nfeatures = 2000)
+})
+features <- SelectIntegrationFeatures(object.list = objects, nfeatures = 2000)
+object.anchors <- FindIntegrationAnchors(object.list=objects, anchor.features=features,
+        reduction='cca',dims=1:30)
+object <- IntegrateData(anchorset = object.anchors, dims=1:30, k.weight = 57)
+
+# Perform integration
+DefaultAssay(object) <- "integrated"
+object <- ScaleData(object)
+object <- RunPCA(object, npcs = 100, verbose = F)
+png(paste(dir_name,'_integrated2_elbow.png',sep=""), width = 800, height = 500)
+ElbowPlot(object,ndims = 50)+labs(title = dir_name)
+dev.off()
+pdf(paste(dir_name,'_integrated2_pcheatmap1.pdf',sep=""), width = 12, height = 16)
+DimHeatmap(object, dims = 1:15, cells = 200, balanced = T)
+dev.off()
+pdf(paste(dir_name,'_integrated2_pcheatmap2.pdf',sep=""), width = 12, height = 16)
+DimHeatmap(object, dims = 16:30, cells = 200, balanced = T)
+dev.off()
+pdf(paste(dir_name,'_integrated2_pcheatmap3.pdf',sep=""), width = 12, height = 16)
+DimHeatmap(object, dims = 31:45, cells = 200, balanced = T)
+dev.off()
+
+pcs <- 20  # iterate
+res <- 0.3  # iterate
 tag <- paste('pcs',pcs,'res',res,sep='.')
 DefaultAssay(object) <- "integrated"
 object <- FindNeighbors(object, dims = 1:pcs)
@@ -377,15 +418,13 @@ p1 <- UMAPPlot(object,group.by = 'seurat_clusters',label = T) + labs(title = dir
         theme(plot.title = element_text(size = 24,hjust = 0),plot.subtitle = element_text(size = 20),plot.caption = element_text(size = 18,color='red')) + NoAxes()
 p2 <- UMAPPlot(object,group.by = 'Sample') + labs(title = dir_name,subtitle = paste("PC's =",pcs,"\nRes =",res)) + NoAxes() +
         theme(plot.title = element_text(size = 24,hjust = 0),plot.subtitle = element_text(size = 20))
-p3 <- UMAPPlot(object,group.by = 'putative_labels') + labs(title = dir_name,subtitle = paste("PC's =",pcs,"\nRes =",res)) + NoAxes() +
-        theme(plot.title = element_text(size = 24,hjust = 0),plot.subtitle = element_text(size = 20))
 Idents(object) <- object$Sample
-toprow <- plot_grid(p1,p2,p3,ncol=3)
+toprow <- plot_grid(p1,p2,NULL,ncol=3)
 
 data <- prop.table(table(object$seurat_clusters,object$Sample),1)*100
 data <- as.data.frame(data)
 p5 <- ggplot(data, aes(x = Var1, y = Freq, fill = Var2)) + NoLegend() +
-  geom_col(position = "dodge") + scale_fill_manual(values = hue_pal()(length(unique(object$Sample)))) +
+  geom_col(position = "dodge", width = 1) + scale_fill_manual(values = hue_pal()(length(unique(object$Sample)))) +
   labs(title = c('Cluster Composition by Sample')) + xlab("Cluster") + ylab("% cluster per sample") +
   theme(plot.title = element_text(size = 24),
         legend.title = element_blank(),
@@ -402,280 +441,84 @@ midrow1 <- plot_grid(p5)
 DefaultAssay(object) <- "RNA"
 Idents(object) <- object$seurat_clusters
 p6 <- FeaturePlot(object, c('Krt5','Hopx','Aqp5','Sftpc'),ncol=2,label = F)  # Epi
-p7 <- FeaturePlot(object, c('Nkx2-1','Sftpb','Defb4','Lyz2'),ncol=2,label = F)  # ATII
+p7 <- FeaturePlot(object, c('Sftpc','Sftpb','Defb4','Lyz2'),ncol=2,label = F)  # ATII
 p8 <- FeaturePlot(object, c('Ager','Aqp5','Hopx','Pdpn'),ncol=2,label = F)  # ATI
 p9 <- FeaturePlot(object, c('Krt5','Krt8','Igfbp2','Sox2'),ncol=2,label = F)  # Basal
-p10 <- FeaturePlot(object, c('Scgb1a1','Rarres1','Muc20','Clca1'),ncol=2,label = F)  # Secretory
-p11 <- FeaturePlot(object, c('Dclk1','Espn','Sox9','Pou2f3'),ncol=2,label = F)  # Tuft1
-p12 <- FeaturePlot(object, c('Top2a','Trpm5','Sox9','Lgr5'),ncol=2,label = F)  # Tuft2
-p13 <- FeaturePlot(object, c('percent.mt','nCount_RNA','nFeature_RNA','Mki67'),ncol=2,label = F)  # QC
-p14 <- FeaturePlot(object, c('Cdh5','Col1a1','Epcam','Ptprc'),ncol=2,label = F)  # Lineage
+p10 <- FeaturePlot(object, c('Ak9','Pifo','Ccdc153','Top2a'),ncol=2,label = F)  # Ciliated
+p11 <- FeaturePlot(object, c('Scgb1a1','Rarres1','Muc20','Clca1'),ncol=2,label = F)  # Secretory
+p12 <- FeaturePlot(object, c('Dclk1','Espn','Sox9','Pou2f3'),ncol=2,label = F)  # Tuft1
+p13 <- FeaturePlot(object, c('Dclk1','Trpm5','Sox9','Lgr5'),ncol=2,label = F)  # Tuft2
+p14 <- FeaturePlot(object, c('Sftpc','Scgb1a1','Sox9','Lgr5'),ncol=2,label = F)  # BASC
 midrow2 <- plot_grid(p6,p7,p8,ncol=3)
 midrow3 <- plot_grid(p9,p10,p11,ncol=3)
 lastrow <- plot_grid(p12,p13,p14,ncol=3)
 
 # Cowplot all panels
 plots <- list(toprow,midrow1,midrow2,midrow3,lastrow)
-png(paste(dir_name,tag,'_integrated7_allplots.png',sep=""), width = 2000,height=2750)
+png(paste(dir_name,tag,'_integrated2_allplots.png',sep=""), width = 2000,height=2750)
 plot_grid(plotlist=plots,ncol=1,rel_heights = c(2,1,2,2,2))
 dev.off()
 
 
-## Evaluate new cluster alignment with old putative_labels
-table(object$seurat_clusters,object$putative_labels)
-# new clusters and old putative_labels align somewhat but not perfectly
-# redefine Krt5, Hopx, Trans, but keep Cycling, EMT, BASC, Secretory
-# REMAKE PUTATIVE LABELS
-Idents(object) <- object$putative_labels
-cycling <- subset(object,idents='Cycling')
-emt <- subset(object,idents='EMT')
-basc <- subset(object,idents='BASC')
-# Secretory aligns perfectly with cluster 13
-Idents(object) <- object$seurat_clusters
-# create new column in metadata
-object$sub_cluster <- as.character(object$seurat_clusters)
-object$sub_cluster[Cells(cycling)] <- paste(Idents(cycling))
-object$sub_cluster[Cells(emt)] <- paste(Idents(emt))
-object$sub_cluster[Cells(basc)] <- paste(Idents(basc))
+## Evaluate clustering within integrated object
+markers <- FindAllMarkers(object, only.pos = T)
+markers$ratio <- markers$pct.1/markers$pct.2
+markers <- markers[order(-markers$ratio),]
 
-table(object$sub_cluster,object$putative_labels)
+save(markers,file=paste(dir_name,'.seurat.objs.int.marks.',Sys.Date(),".Robj",sep=""))
 
-p1 <- UMAPPlot(object,group.by = 'sub_cluster') + labs(title = dir_name,subtitle = paste("PC's =",pcs,"\nRes =",res)) +
-        theme(plot.title = element_text(size = 24,hjust = 0),plot.subtitle = element_text(size = 20)) + NoAxes()
-p2 <- UMAPPlot(object,group.by = 'putative_labels') + labs(title = dir_name,subtitle = paste("PC's =",pcs,"\nRes =",res)) + NoAxes() +
+# Plot top markers
+p1 <- UMAPPlot(object,group.by = 'seurat_clusters',label = T) + labs(title = dir_name,subtitle = paste("PC's =",pcs,"\nRes =",res),caption = paste("nCells =",ncol(object))) +
+        theme(plot.title = element_text(size = 24,hjust = 0),plot.subtitle = element_text(size = 20),plot.caption = element_text(size = 18,color='red')) + NoAxes()
+p2 <- UMAPPlot(object,group.by = 'Sample') + labs(title = dir_name,subtitle = paste("PC's =",pcs,"\nRes =",res)) + NoAxes() +
         theme(plot.title = element_text(size = 24,hjust = 0),plot.subtitle = element_text(size = 20))
-toprow <- plot_grid(p1,p2,ncol=2)
-p3 <- FeaturePlot(object, c('Krt5','Hopx'),ncol=2,order=T)
-p4 <- VlnPlot(object,c('Krt5','Hopx'),group.by='sub_cluster',ncol=2,pt.size=0.1) & theme(axis.title.x = element_blank())
+toprow <- plot_grid(p1,p2,NULL,NULL,ncol=4)
 
-png(paste(dir_name,tag,'_integrated7_subcluster.png',sep=""), width = 1000,height=1500)
-plot_grid(plotlist=list(toprow,p3,p4),ncol=1)
+clusters <- levels(object$seurat_clusters)
+#clusters <- clusters[1:10]
+goi <- c(); marks <- c(); genes <- c()
+myplots <- vector('list',length(clusters))
+for (i in 1:length(clusters)) {
+    cluster <- clusters[[i]]
+    message(cluster)
+
+    goi <- markers[which(markers$cluster == cluster),]
+    goi <- goi[1:15, ]  # 15
+    row.names(goi) <- goi$gene
+    marks <- round(goi[, 2:5], digits = 4)
+    marks$ratio <- round(goi$ratio, digits = 4)
+    marks <- as.data.frame(marks)
+    p <- tableGrob(marks,theme = ttheme_minimal(base_size = 16))
+
+    #marks <- marks[order(marks$avg_log2FC),]
+    genes <- row.names(marks)
+    q <- FeaturePlot(object,c(genes[1:4]),ncol=2,label = F)
+    myplots[[i]] <- plot_grid(p,q,ncol=2)
+}
+lastrow <- plot_grid(plotlist=myplots,ncol=2,labels=paste('Cluster',clusters),label_size = 40)
+
+# Cowplot all panels
+plots <- list(toprow,lastrow)
+png(paste(dir_name,tag,'_integrated2_clusters_1.png',sep=""), width = 2000,height=2750)
+plot_grid(plotlist=plots,ncol=1,rel_heights = c(1,5))  # 2.5,3.5
 dev.off()
 
-Idents(object) <- object$sub_cluster
-object <- RenameIdents(object,
-                '0'='Hopx',
-                '1'='Krt5',
-                '2'='Trans',
-                '3'='Hopx',
-                '4'='Trans',
-                '5'='Krt5',
-                '6'='Trans',
-                '7'='Trans',
-                '8'='Krt5',
-                '9'='Trans',
-                '10'='Krt5',
-                '11'='Krt5',
-                '12'='Krt5',
-                '13'='Secretory')
-object$putative_labels <- Idents(object)
-
-table(object$putative_labels)  # confirm
-object$putative_labels <- factor(object$putative_labels,levels=c('Krt5','Hopx',
-    'Trans','Cycling','EMT','BASC','Secretory'))
-
-
-# focus_epi_8.R
-#### Focused Analysis of Engineered Epithelium
-## Re-do Slingshot & Run Velocyto w Pagoda2
-
-### Pseudotime using Slingshot (v2.2.1)
-DefaultAssay(object) <- "integrated"  # recommended
-slobject <- as.SingleCellExperiment(object,assay = c('integrated','RNA'))
-
-slobject <- slingshot(slobject,reducedDim = reducedDim(slobject,'PCA')[,pcs],
-    approx_points = 40,start.clus = 'Cycling',clusterLabels = 'putative_labels')
-
-colors <- colorRampPalette(brewer.pal(11,'Spectral')[-6])(100)
-plotcol <- colors[cut(slobject$slingPseudotime_1, breaks=100)]
-
-png(paste(dir_name,'sling_int3_umap_1.png',sep='_'), width = 800, height = 800)
-plot(reducedDims(slobject)$UMAP, col = plotcol, pch=16, asp = 1)
+# Extra plots - QC & lineage
+png(paste(dir_name,tag,'_integrated3_fp_qc.png',sep=""), width = 800, height = 1200)
+FeaturePlot(object, c('percent.mt','nCount_RNA','nFeature_RNA','perc.spliced','Mki67','Top2a'),ncol=2,label = T,repel=T)
+dev.off()
+png(paste(dir_name,tag,'_integrated3_vln_qc.png',sep=""), width = 800, height = 1200)
+VlnPlot(object,c('percent.mt','nCount_RNA','nFeature_RNA','perc.spliced','Mki67','Top2a'),group.by='seurat_clusters',ncol=2,pt.size=0.1)
 dev.off()
 
-save(slobject,file = paste("epi.seurat.objs.sling",Sys.Date(),"Robj",sep="."))
-
-
-## Pull slingshot pseudotime metadata
-sling.metadata <- slingPseudotime(slobject)
-
-sling.metadata2 <- slingCurveWeights(slobject)
-
-object <- AddMetaData(object,metadata = sling.metadata,col.name=colnames(sling.metadata))
-
-png(paste(dir_name,'sling_int3_fp_1.png',sep='_'), width = 800, height = 400)
-FeaturePlot(object,c('Lineage1','Lineage2'),ncol=2,label = T,repel=T,order=T)
+png(paste(dir_name,tag,'_integrated3_fp_lin.png',sep=""), width = 800, height = 800)
+FeaturePlot(object, c('Cdh5','Col1a1','Epcam','Ptprc'),ncol=2,label = T,repel=T)
+dev.off()
+png(paste(dir_name,tag,'_integrated3_vln_lin.png',sep=""), width = 800, height = 800)
+VlnPlot(object,c('Cdh5','Col1a1','Epcam','Ptprc'),group.by='seurat_clusters',ncol=2,pt.size=0.1)
 dev.off()
 
-# Save metadata
-sling.metadata <- slingPseudotime(slobject)
-colnames(sling.metadata) <- paste0(colnames(sling.metadata),'_ps')
-
-sling.metadata2 <- slingCurveWeights(slobject)
-colnames(sling.metadata2) <- paste0(colnames(sling.metadata2),'_cw')
-
-sling.metadata <- data.frame(sling.metadata,sling.metadata2)
-
-save(sling.metadata,file = paste0("sling.metadata.",Sys.Date(),".Robj"))
-
-
-
-### Velocyto on Engineered Epithelium
-library(velocyto.R)
-library('pagoda2')
-
-## Setup with Pagoda2
-DefaultAssay(object) <- "integrated"
-Idents(object) <- object$Final1
-object <- subset(object, downsample = 2000)
-object <- FindVariableFeatures(object)
-length(object@assays$integrated@var.features)
-object <- ScaleData(object)
-nrow(GetAssayData(object,slot="scale.data"))
-
-r <- Pagoda2$new(as(GetAssayData(object,slot="scale.data"),"dgCMatrix"),modelType="raw")
-r$reductions[['PCA']] <- object@reductions$pca
-r$reductions[['umap']] <- object@reductions$umap
-r$embeddings[['PCA']][['umap']] <- Embeddings(object[['umap']])
-
-cluster.label <- object$Final1
-cell.colors <- sccore:::fac2col(cluster.label,
-        level.colors=type_colors[levels(object$Final1)])
-
-png(paste0(dir_name,'_pagumap_3.png'), width = 800, height = 800)
-r$plotEmbedding(type='PCA',embeddingType='umap',colors=cell.colors,mark.clusters=T,
-        min.group.size=10,shuffle.colors=F,mark.cluster.cex=1,alpha=0.3,
-        main='cell clusters')
-dev.off()
-
-
-## Calculating Velocity
-emat <- object$spliced; nmat <- object$unspliced
-emat <- emat[,rownames(r$counts)]; nmat <- nmat[,rownames(r$counts)]
-
-cluster.label <- object$Final1
-cell.colors <- sccore:::fac2col(cluster.label,
-        level.colors=type_colors[levels(object$Final1)])
-
-cell.dist <- as.dist(1-armaCor(t(r$embeddings[['PCA']][['umap']])))
-
-emat <- filter.genes.by.cluster.expression(emat,cluster.label,min.max.cluster.average = 0.5)
-nmat <- filter.genes.by.cluster.expression(nmat,cluster.label,min.max.cluster.average = 0.08)
-length(intersect(rownames(emat),rownames(nmat)))
-# [1] 912
-
-fit.quantile <- 0.02
-rvel.cd <- gene.relative.velocity.estimates(emat,nmat,deltaT=1,kCells=25,
-        cell.dist=cell.dist,fit.quantile=fit.quantile)
-emb <- r$embeddings$PCA$umap
-
-x <- show.velocity.on.embedding.cor(emb,rvel.cd,n=200,n.cores=1,scale='sqrt',
-        cell.colors=ac(cell.colors,alpha=0.5),cex=0.8,arrow.scale=8,show.grid.flow=T,
-        min.grid.cell.mass=5,grid.n=20,arrow.lwd=1,do.par=T,cell.border.alpha = 0.1)
-
-res <- 400
-png(paste(dir_name,'_pagvel_3.png',sep=''), width=650*res/72, height=650*res/72,res=res)
-show.velocity.on.embedding.cor(emb,rvel.cd,n=800,n.cores=1,scale='sqrt',cc=x$cc,
-        cell.colors=ac(cell.colors),cex=1,arrow.scale=15,show.grid.flow=T,
-        min.grid.cell.mass=30,grid.n=20,arrow.lwd=4,do.par=F,cell.border.alpha = 0.1,
-        xlab = c('UMAP_1'),ylab= c('UMAP_2'))
-dev.off()
-
-
-
-### Velocyto on Engineered Epithelium - BASC subset focus
-# Subset based on embedding
-cut <- Embeddings(object[['umap']])[which(Embeddings(object[['umap']])[,'UMAP_1'] > -3),]
-cut <- cut[which(cut[,'UMAP_1'] < 0.5),]
-cut <- cut[which(cut[,'UMAP_2'] > -4),]
-cut <- cut[which(cut[,'UMAP_2'] < 0),]
-
-sub <- subset(object,cells=rownames(cut))  # 628 cells
-
-## Setup with Pagoda2
-DefaultAssay(sub) <- "integrated"
-Idents(sub) <- sub$Final1
-sub <- FindVariableFeatures(sub)
-length(sub@assays$integrated@var.features)
-sub <- ScaleData(sub)
-nrow(GetAssayData(sub,slot="scale.data"))
-
-r <- Pagoda2$new(as(GetAssayData(sub,slot="scale.data"),"dgCMatrix"),modelType="raw")
-r$reductions[['PCA']] <- sub@reductions$pca
-r$reductions[['umap']] <- sub@reductions$umap
-r$embeddings[['PCA']][['umap']] <- Embeddings(sub[['umap']])
-
-cluster.label <- sub$Final1
-cell.colors <- sccore:::fac2col(cluster.label,
-        level.colors=type_colors[levels(sub$Final1)])
-
-png(paste(dir_name,'_pagumap_sub_1.png',sep=''), width = 800, height = 800)
-r$plotEmbedding(type='PCA',embeddingType='umap',colors=cell.colors,mark.clusters=T,
-        min.group.size=10,shuffle.colors=F,mark.cluster.cex=1,alpha=0.3,
-        main='cell clusters')
-dev.off()
-
-
-## Calculating Velocity
-emat <- sub$spliced; nmat <- sub$unspliced
-emat <- emat[,rownames(r$counts)]; nmat <- nmat[,rownames(r$counts)]
-
-cluster.label <- sub$Final1
-cell.colors <- sccore:::fac2col(cluster.label,
-        level.colors=type_colors[levels(sub$Final1)])
-
-cell.dist <- as.dist(1-armaCor(t(r$embeddings[['PCA']][['umap']])))
-
-emat <- filter.genes.by.cluster.expression(emat,cluster.label,min.max.cluster.average = 0.5)
-nmat <- filter.genes.by.cluster.expression(nmat,cluster.label,min.max.cluster.average = 0.08)
-length(intersect(rownames(emat),rownames(nmat)))
-# [1] 667
-
-fit.quantile <- 0.02
-rvel.cd <- gene.relative.velocity.estimates(emat,nmat,deltaT=1,kCells=25,
-        cell.dist=cell.dist,fit.quantile=fit.quantile)
-emb <- r$embeddings$PCA$umap
-
-x <- show.velocity.on.embedding.cor(emb,rvel.cd,n=200,n.cores=1,scale='sqrt',
-        cell.colors=ac(cell.colors,alpha=0.5),cex=0.8,arrow.scale=8,show.grid.flow=T,
-        min.grid.cell.mass=5,grid.n=20,arrow.lwd=1,do.par=T,cell.border.alpha = 0.1)
-
-res <- 400
-png(paste(dir_name,'_pagvel_sub_1.png',sep=''), width=400*res/72, height=400*res/72,res=res)
-show.velocity.on.embedding.cor(emb,rvel.cd,n=25,n.cores=1,scale='sqrt',cc=x$cc,
-        cell.colors=ac(cell.colors),cex=1,arrow.scale=5,show.grid.flow=T,
-        min.grid.cell.mass=5,grid.n=18,arrow.lwd=4,do.par=F,cell.border.alpha = 0.1,
-        min.arrow.size = 0.25,xlab = c('UMAP_1'),ylab= c('UMAP_2'))
-dev.off()
-
-
-
-### Plot velocity on slingshot pseudotime coloring
-object <- AddMetaData(object,metadata = sling.metadata,col.name=names(sling.metadata))
-lins <- data.frame(object$Lineage1_ps,object$Lineage2_ps)
-object$Lineage_avg <- rowMeans(lins,na.rm=TRUE)
-
-colors <- colorRampPalette(brewer.pal(11,'Spectral')[-6])(100)
-plotcol <- colors[cut(slobject$slingPseudotime_1, breaks=100)]
-
-png(paste(dir_name,'_pagvelpseudo_1.png',sep=''), width = 800, height = 800)
-show.velocity.on.embedding.cor(emb,rvel.cd,n=200,n.cores=1,scale='sqrt',
-        cell.colors=ac(cell.colors,alpha=0.5),cex=0.8,arrow.scale=8,show.grid.flow=TRUE,
-        min.grid.cell.mass=0.5,grid.n=40,arrow.lwd=1,do.par=F,cell.border.alpha = 0.1)
-dev.off()
-
-# Plot velocyto colored by slingshot
-cluster.label <- sort(object$Lineage1_ps)
-colors <- colorRampPalette(brewer.pal(11,'Spectral')[-6])(ncol(object))
-cell.colors <- sccore:::fac2col(cluster.label,shuffle=FALSE,
-        level.colors=colors)
-
-png(paste(dir_name,'_pagvel_4.png',sep=''), width = 800, height = 800)
-show.velocity.on.embedding.cor(emb,rvel.cd,n=1000,n.cores=1,scale='sqrt',cc=x$cc,
-        cell.colors=ac(cell.colors,alpha=0.5),cex=1,arrow.scale=12,show.grid.flow=T,
-        min.grid.cell.mass=50,grid.n=15,arrow.lwd=4,do.par=F,cell.border.alpha = 0.1)
-dev.off()
-
+save(object,file = paste("epi.seurat.objs.int.",Sys.Date(),".Robj",sep=""))
 
 
 
@@ -774,25 +617,4 @@ dev.off()
 
 
 
-#### Extra investigation, DO NOT INCLUDE
-
-#### Epithelium
-# Investigation to trace integration
-# Figure object = epi.seurat.objs.int.2023-07-27.Robj
-load('./Epi/epi.seurat.objs.int.2023-01-26.Robj')  # made in focus_epi_7.R
-opt1 <- object ; rm(object)
-load('./Epi/epi.refined.2023-03-06.Robj')  # Sam reclustered and re-defined Final1+2 metadata?
-opt2 <- epi ; rm(epi)
-load('./Epi/epi.seurat.objs.int.2023-07-27.Robj')  # I brought all together in update_eng_objects.R
-opt3 <- object ; rm(object)
-# all appear to be same size (52878 cells), so I'll use 2023-01-26...
-# except it doesn't have integration, check 2022-12-15 (made in focus_epi_3.R)
-load('./Epi/epi.seurat.objs.int.2022-12-15.Robj')  # 52936 cells - contains 58 TXP3_L cells
-opt4 <- object ; rm(object)
-# still doesn't have integration, check 2022-09-19 (made in explore_epi_5.R)
-load('./Epi/epi.seurat.objs.int.2022-09-19.Robj')  # 53176 cells - contains 58 TXP3_L cells and...?
-opt5 <- object ; rm(object)
-# This suggests the last time an integration was performed on epithelium was explore_epi_5.R,
-#   which included TXP3_L and some contaminating endo and imm cells, which were later removed
-#   Do we care? Do we just bury it in the code?
 
