@@ -1,0 +1,236 @@
+---
+title: "MesRecFeatures_v2"
+author: "MSBR"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width = 24,fig.height = 22,warning = FALSE,message = FALSE)
+```
+
+## Introduction
+
+This script identifies specific features of interest, landing on MESENCHYME, in the BEFM project.
+
+## Set WD
+```{r message=F}
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+```
+
+## Packages
+```{r}
+require(Seurat)
+require(NICHES)
+require(dplyr)
+require(ggthemes)
+require(ggplot2)
+require(cowplot)
+require(knitr)
+```
+
+## Color palette
+
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/all.color_palettes_2.R")
+color_pals
+```
+
+## Load Mes Rec from save
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/mes.rec.Robj")
+```
+
+## Inspect
+```{r}
+mes.rec
+```
+
+## Update to v5
+```{R}
+mes.rec <- UpdateSeuratObject(mes.rec)
+mes.rec
+```
+## Dimplot for review
+```{r}
+p0 <- DimPlot(
+  mes.rec,
+  reduction = "umap",
+  group.by = c('class.Sending',"Dataset2.Sending", "orig.ident", "seurat_clusters"),
+  combine = FALSE, label.size = 8,shuffle = T,label=T)
+p0 <- cowplot::plot_grid(plotlist = p0,nrow = 1)
+p0
+```
+## Define archetypes for analysis
+```{r}
+mes.rec$Archetype <- mes.rec$seurat_clusters
+Idents(mes.rec) <- mes.rec$Archetype
+```
+
+## Dimplot for review
+```{r}
+p0 <- DimPlot(
+  mes.rec,
+  reduction = "umap",
+  group.by = c('Archetype','class.Sending',"Dataset2.Sending", "orig.ident", "pca_clusters"),
+  combine = FALSE, label.size = 8,shuffle = T,label=T)
+p0 <- cowplot::plot_grid(plotlist = p0,nrow = 1)
+p0
+```
+
+## Label based on metdata
+
+```{r}
+Idents(mes.rec) <- mes.rec$seurat_clusters
+table(Idents(mes.rec))
+mes.rec <- RenameIdents(mes.rec,
+                        '0'='Mes-Auto BEF12',
+                        '1'='Baseline Epi-Mes',
+                        '2'='Mes-Auto BEF14',
+                        '3'='Mes-Auto BEF15',
+                        '4'='Mes-Auto BEFM2',
+                        '5'='Baseline Endo-Mes',
+                        '6'='Epi-Mes BEFM1',
+                        '7'='Mes-Auto BEFM1',
+                        '8'='Immune-Mes')
+table(Idents(mes.rec))
+mes.rec$Archetype <- Idents(mes.rec)
+```
+
+
+# Differential expression across archetype
+
+```{r}
+mark <- FindAllMarkers(mes.rec,min.pct = 0.1,logfc.threshold = 0.1)
+mark$ratio <- mark$pct.1/mark$pct.2
+mark$power <- mark$ratio*mark$avg_log2FC
+kable(mark %>% group_by(cluster) %>% top_n(20,ratio))
+```
+
+## Cluster 0 (Mes-Auto BEF12)
+```{r}
+goi.0 <-  c()
+FeaturePlot(mes.rec,
+            features = goi.0,order = T,pt.size=1,label=T,label.size = 8)
+
+```
+
+## Cluster 1 (Baseline Epi-Mes)
+```{r}
+goi.1 <-  c()
+FeaturePlot(mes.rec,
+            features = goi.1,order = T,pt.size=1,label=T,label.size = 8)
+
+```
+
+## Cluster 2 (Mes-Auto BEF14)
+```{r}
+goi.2 <-  c()
+FeaturePlot(mes.rec,
+            features = goi.2,order = T,pt.size=1,label=T,label.size = 8)
+
+```
+
+## Cluster 3 (Mes-Auto BEF15)
+```{r}
+goi.3 <- c()
+FeaturePlot(mes.rec,
+            features = goi.3,
+            order = T,pt.size = 1,label=T,label.size = 8)
+```
+
+## Cluster 4 (Mes-Auto BEFM2)
+```{r}
+goi.4 <- c()
+  
+FeaturePlot(mes.rec,
+            features = goi.4,
+            order = T,pt.size = 1,label=T,label.size = 8)
+```
+
+## Cluster 5 (Baseline Endo-Mes)
+```{r}
+goi.5 <- c('Dll4—Notch2','Vip—Npr3','Tnfsf4—Traf2','Tnfsf10—Tnfrsf11b','Nxph1—Nrxn3','Angpt2—Tie1','Mfng—Notch2',
+'Pdgfb—Pdgfrb','Pdgfb—Pdgfra','Pdgfd—Pdgfrb','Dhh—Ptch1','Dhh—Cdon','Dhh—Boc','Bmp4—Bmpr1a','Bmp4—Bmpr2','Sema6d—Plxna1')
+  
+FeaturePlot(mes.rec,
+            features = goi.5,
+            order = T)
+```
+
+## Cluster 6 (Epi-Mes BEFM1)
+```{r}
+goi.6 <- c('Wnt7a—Lrp6','Fgf9—Fgfr2','Tgfb1—Itgb6','Tnf—Ltbr','Bmp7—Bmpr1b','Npnt—Itgb1','Sct—Sctr','Cdh1—Igf1r','Mmp7—Cd44')
+  
+FeaturePlot(mes.rec,
+            features = goi.6,
+            order = T)
+```
+
+## Cluster 7 (Mes-Auto BEFM1)
+```{r}
+goi.7 <- c('Fgf1—Fgfr2','Fbn1—Itgb6','Mdk—Tspan1','Fgf2—Fgfr2','Tgfb1—Itgb6','Fn1—Itgb6')
+  
+FeaturePlot(mes.rec,
+            features = goi.7,
+            order = T)
+```
+
+## Cluster 8 (Immune-Mes)
+```{r}
+goi.8 <- c()
+  
+FeaturePlot(mes.rec,
+            features = goi.8,
+            order = T,pt.size = 1,label=T,label.size = 8)
+```
+
+## Heatmap
+
+```{r}
+goi.0 <-  c('Dlk1—Notch1','Bmp5—Bmpr1b','Rspo3—Lrp6',
+                         'Angpt1—Itgb1','Bmp5—Acvr2a','Thbs2—Itgb1',
+                         'Bmp5—Bmpr1a','Thbs2—Cd47','Ptn—Sdc1','Mst1—Mst1r','Fgf7—Fgfr1','Igf2—Igf2r','Bmp5—Bmpr1b','Ptn—Sdc1','Fgf10—Fgfr2','Dkk2—Lrp6','Bmp5—Bmpr2')
+
+goi.1 <-  c('Efna3—Epha1','Efna3—Epha2','Efna3—Epha4','Ntf4—Ngfr','Il10—Il10rb','Fgf9—Fgfr1','Dlk2—Notch1','Wnt3a—Fzd6','Wnt3a—Lrp6','Wnt3a—Ryk','Fgf9—Fgfr2','Bmp7—Eng','Bmp7—Bmpr1b','Wnt7b—Fzd1','Bmp7—Bmpr2','Areg—Erbb3','Ereg—Erbb3','Areg—Egfr')
+
+goi.2 <-  c('Jag1—Notch4','Dll1—Notch3','Bmp3—Bmpr1b','Dll1—Notch4','Gas6—Axl','Tnfsf12—Tnfrsf25','Jag1—Notch3','Bmp6—Bmpr2','Bmp3—Bmpr2','Vegfc—Nrp2','Vip—Sctr','Dll1—Notch2','Dll1—Notch1','Tnfsf4—Tnfrsf4','Dll4—Notch1','Dll4—Notch2','Pdgfb—Pdgfrb','Angpt2—Tie1','Dll4—Notch3','Dll4—Notch4','Dhh—Ptch1','Sema6d—Plxna1')
+
+goi.3 <- c('Tnf—Tnfrsf1b','Sct—Sctr','Wnt7a—Lrp6',
+                         'Npnt—Itgb1','Ereg—Egfr','Wnt7b—Lrp5',
+                         'Hbegf—Egfr','Lamb3—Itga3','Npnt—Itgb1','Tnf—Tnfrsf21','Tnf—Tnfrsf21','Tnf—Ltbr','Lamb3—Itga2','Mmp7—Cd44','Lamb3—Itga2','Btc—Egfr')
+
+goi.4 <- c('Fgf1—Fgfr3','Fgf1—Egfr','Fgf1—Fgfr2','Fgf2—Fgfr3','Fgf12—Fgfr3','Lama1—Itga2',
+                         'Csf2—Csf2ra','Ngf—Maged1','Wnt16—Fzd6',
+                         'Fgf7—Fgfr3','Fn1—Itgb6','Vegfa—Ephb2',
+                         'Wnt5a—Lrp5','Wnt5a—Ryk','Col4a1—Itga2','Tnc—Egfr')
+  
+goi.5 <- c('Amh—Egfr','Hgf—Met','Igf1—Igf1r','Cxcl2—Cxcr2','Il1b—Adrb2','Tnfsf15—Tnfrsf25','Ebi3—Il6st','Il18—Il18r1','Osm—Osmr','Il1b—Il1r1','Camp—Igf1r','Tnfsf13—Tnfrsf1a','Nrg4—Egfr','Nrg4—Erbb2','Efna2—Epha1')
+  
+goi <- unique(c(goi.0,goi.1,goi.2,goi.3,goi.4,goi.5))
+
+row.labels <- c('Bmp5—Bmpr1b','Rspo3—Lrp6','Fgf10—Fgfr2',
+                'Il10—Il10rb','Wnt3a—Fzd6','Wnt7b—Fzd1',
+                'Dll1—Notch2','Vip—Sctr','Dhh—Ptch1',
+                'Sct—Sctr','Wnt7a—Lrp6','Wnt7b—Lrp5',"Lamb3—Itga3",'Tnf—Ltbr',
+                'Fgf7—Fgfr3','Fn1—Itgb6','Col4a1—Itga2','Wnt5a—Ryk',
+                'Osm—Osmr','Il1b—Il1r1','Il18—Il18r1','Nrg4—Egfr')
+
+png('EpiRec.Heatmap.6.png',width=8,height=8,units='in',res=300)
+CustomHeatmap(mes.rec,
+              data.type = 'CellToCell',
+                 primary = 'Archetype' ,
+                 secondary = 'class.Sending' ,
+                 tertiary = 'Dataset2.Sending' ,
+                 quarternary = 'orig.ident' ,
+                 primary.cols = NULL ,
+                 secondary.cols = color_pals$class_colors,
+                 tertiary.cols = color_pals$dataset_colors[5:6],
+                 quarternary.cols = color_pals$sample_colors,
+                 features = goi,
+                 labels = c('Signaling Archetype','Sending Cell Class','Condition','Sample'),
+                selected.row.anotations=row.labels,
+              selected.label.size = 10)
+dev.off()
+```

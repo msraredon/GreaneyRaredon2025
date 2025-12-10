@@ -1,0 +1,149 @@
+---
+title: "EpithelialReceivingWorking"
+author: "MSBR"
+date: "`r Sys.Date()`"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width = 24,fig.height = 22,warning = FALSE,message = FALSE)
+```
+
+## Introduction
+
+This script analyzes epithelial niche signaling in the BEFM project
+
+## Set WD
+```{r message=F}
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+```
+
+## Packages
+```{r}
+require(Seurat)
+require(NICHES)
+require(dplyr)
+require(ggthemes)
+require(ggplot2)
+require(cowplot)
+require(knitr)
+```
+
+
+# Local functions
+```{r}
+source('/Users/msbr/GitHub/NICHESMethods/R Scripts/ToolBuilding/NICHES_FeaturePlot.R')
+```
+
+#### Load saved NICHES data from Part 1
+
+Note that no data filtration has been performed, per decisions in Part 2.
+
+As a reminder, these data were made from a 5000 cell-per-sample downsampled object that is then fed into NICHES and the outputs saved. 
+
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/global.connectomics.2023-11-11.Robj")
+```
+
+## Inspect
+```{r}
+global.connectomics
+```
+
+
+#### Subset out the just specific samples of interest, per Allie's request:
+
+Here we limit all of our downstream analysis to information that came exclusively from the following 5 samples of interest, which will allow us to nicely isolate the effect of macrophages on mesenchymal to epithelial signaling. 
+
+Note that this is a lossy step in this process, and that we might be losing useful information by doing this. But, we are doing this because it makes sense for this specific project - it allows us to asked focused questions within a data-context where we know that the answers will be reliable.
+
+```{r}
+samples.of.interest <- c('BEF12','BEF14','BEF15','BEFM1','BEFM2')
+# we will use this set of samples for downstream calculations in this workflow
+```
+
+#### Define colors
+
+This is a temporary color palette, and we should consider updating / polishing for publication.
+
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/all.color_palettes_2.R")
+
+## For now:
+color_pals$type_colors <- c('#A40606','#9CFFFA','#B0DB43','#9C528B','#2F6690',
+                                '#946846','#F1C40F','green','#0F0326','#E65F5C','#14591D','#726DA8',
+                                'yellow','purple','blue','red','orange','darkgrey','magenta')
+names(color_pals$type_colors) <- unique(global.connectomics$CellToCell$alra$SendingType)
+```
+
+#### Isolate Epithelial Receiving edges
+
+Here, we isolated just the CellToCell signaling edges that land on Epithelium within this limited dataset. This is a newly discovered approach that seems to work well for this project. It allows us to ask questions like
+
+"How does epithelial niche signaling change between conditions, who is responsible for the observed changes, and what features are associated with observed shifts?"
+
+
+```{r}
+temp <- global.connectomics$CellToCell$alra # we will use the imputed data, for now
+Idents(temp) <- temp$class.Receiving
+table(Idents(temp))
+epi.rec <- subset(temp, idents = 'Epithelium')
+Idents(epi.rec) <- epi.rec$orig.ident
+table(Idents(epi.rec))
+epi.rec <- subset(epi.rec,idents = c(samples.of.interest))
+table(Idents(epi.rec))
+```
+
+## Clean
+
+Since we are no longer prioritizing BCL5, we can clean these data to help us make prettier plots
+
+```{r}
+VlnPlot(epi.rec,'nFeature_CellToCell',group.by = 'orig.ident')
+epi.rec <- subset(epi.rec,subset = nFeature_CellToCell>100)
+VlnPlot(epi.rec,'nFeature_CellToCell',group.by = 'orig.ident')
+```
+
+Excellent. Let's take a global look at this edge category before moving further:
+
+#### Epithelium Receiving - Embed and Cluster
+
+```{r}
+epi.rec <- ScaleData(epi.rec)
+epi.rec <- FindVariableFeatures(epi.rec)
+epi.rec <- RunPCA(epi.rec,npcs = 50)
+ElbowPlot(epi.rec,ndims = 50)
+epi.rec <- RunUMAP(epi.rec,dims = 1:20)
+epi.rec <- FindNeighbors(epi.rec,dims = 1:20)
+epi.rec <- FindClusters(epi.rec,resolution = 0.1)
+```
+
+## Epi Plot
+```{r}
+p1 <- DimPlot(epi.rec,group.by = 'class.Sending',shuffle = T)+ggtitle('Sending CellClass')
+p2 <- DimPlot(epi.rec,group.by = 'class.Receiving',shuffle = T)+ggtitle('Receiving CellClass')
+p3 <- DimPlot(epi.rec,group.by = 'Dataset2.Sending',shuffle = T)+ggtitle('Dataset2')
+p4 <- DimPlot(epi.rec,group.by = 'SendingType',shuffle = T)+ggtitle('Sending CellType')
+p5 <- DimPlot(epi.rec,group.by = 'ReceivingType',shuffle = T)+ggtitle('Receiving CellType')
+p6 <- DimPlot(epi.rec,group.by = 'orig.ident',shuffle = T)+ggtitle('Sample')
+
+# Define plot blocks
+small.mult <- cowplot::plot_grid(p1,p2,p3,p4,p5,p6,ncol = 3)
+sig.arch <- DimPlot(epi.rec,group.by = 'seurat_clusters',shuffle = T,label = T)+ggtitle('Signaling Archetypes')
+split.arch <- DimPlot(epi.rec,split.by = 'orig.ident',group.by = 'seurat_clusters',shuffle = T,ncol = 2)+ggtitle('Signaling Archetypes (Split By Sample)')
+
+# Assemble blocks in cowplot
+top <- small.mult
+bottom <- cowplot::plot_grid(sig.arch,split.arch,rel_widths = c(1.2,1))
+plot <- cowplot::plot_grid(top,bottom,nrow = 2)
+plot
+
+png('Epithelial_Receiving.png',width=24,height = 22,units = 'in',res=300)
+print(plot)
+dev.off()
+```
+
+## Save for later
+```{r}
+save(epi.rec,file = 'epi.rec.Robj')
+```

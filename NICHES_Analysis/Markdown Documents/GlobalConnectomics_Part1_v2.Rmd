@@ -1,0 +1,375 @@
+---
+title: "GlobalConnectomics_Part1_v2"
+author: "MSBR"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This script presents the first steps of the NICHES analysis of the BEFM
+project data. Our goal here is just to *generate* the NICHES output
+data, we will analyze it later. There are choices we need to make as we
+generate these output data. It can be difficult to know in advance which
+choices to make, so in general we will perform multiple avenues in
+parallel and then see when data formats best suit our project goals.
+
+NB: This script leverages prior knowledge gained from exploratory
+analysis of this dataset over the last year. It is unusual to know at
+this step in the process exactly which moves need to be made. This is a
+teaching example of how to run NICHES on a complex dataset.
+
+#### Notes on sources of data variance in this dataset
+
+This dataset contains extensive variance, some of which is of interest
+to this project and some of which is not. It can be very difficult to
+tell the difference between the two even on the raw RNA level, and this
+difficulty carries over into the NICHES analysis. Some major sources of
+variance in this analysis include:
+
+1.  Classic batch effect - each of these samples was generated on
+    separate days and sequenced independently. Although we tried to
+    standardize read-depth, this was not always carried out correctly
+    and certain samples therefore have more or fewer reads devoted to
+    more or fewer total barcodes. This is the nature of the beast with a
+    project like this.
+
+2.  Multiple chemistries. This dataset includes data from both 10x
+    Genomics v2 and v3 chemistries. v3 has massively higher information
+    capture efficiency, so there is a strong difference in information
+    depth between these samples.
+
+3.  Bioreactor conditions, while fairly standardized, were not
+    completely consistent between datasets. This doesn't mandate any
+    special data handling, but we need to stay aware of it, particularly
+    when checking if a single sample is an outlier.
+
+4.  Different combinations of cell types were seeded into each
+    construct. In this analysis, we are trying to compare a number of
+    highly disparate 'tissues', including
+
+    -   a\. Starting populations (2D cellular monocultures)
+
+    -   b\. Monocultures
+
+    -   c\. Cocultures
+
+    -   d\. Tricultures
+
+    -   e\. Quadcultures
+
+    -   f\. Native tissues
+
+This presents a challenge. First, many questions that we are used to
+asking will lack necessary control information, i.e., we cannot compare
+macrophage-epithelial communication in the quad culture to
+macrophage-epithelial communication in the monoculture, because it does
+not *exist* in the monoculture.
+
+We *can* compare macrophage-epithelial communication in the quad culture
+to macrophage-epithelial communication in the **native** tissues.
+However, that may not be as useful as we think, because there are going
+to be major differences, and many standard data processing pipelines
+will obscure the subtle but interesting similarities, which is what we
+are often really interested in. We might benefit from asking slightly
+different questions, such as:
+
+> "How does myeloid-epithelial communication in the quadculture compare
+> to myeloid-epithelial communication in native tissues?"
+
+or,
+
+> "How do mechanisms that are native to myeloid-epithelial communication
+> distribute across our engineered data?"
+
+It will be valuable for us to think about which statistical tests might
+output the most meaningful, interpretable, and reliable answers to
+questions such as these.
+
+## Technical Details
+
+#### We will perform certain steps incorporating the following findings / decisions:
+
+1.  We will exclude the transplant samples from analysis
+2.  We will only consider the myeloid fraction of immune populations.
+3.  Cell type annotations will be used from integrated class-specific
+    latent-space analyses that have already been performed by Dr.
+    Greaney and will be used throughout the paper. We will also use
+    colors that align with Dr. Greaney's figures, as much as is
+    possible.
+4.  We will focus predominantly on the System-To-Cell measurements, and
+    use this as our primary guide for finding differential patterns of
+    interest. This is because the SystemToCell output is a proxy for
+    cellular microenvironment, which deliberately takes altered
+    sending-cell representation into account. This means that added
+    cells will have a large effect on the SystemToCell measurements We
+    may then use the finer-grained, CellToCell metric to look more
+    closely at pathways of interest, and to see in detail which cells
+    are responsible for causing major microenvironmental shifts.
+5.  We will strive to impute the data before we run NICHES. This will
+    reduce false negatives, increase statistical power, and make our
+    plots much more elegant and easy to interpret. However, imputation
+    is a finicky beast that has two major problems that I have
+    identified so far: a) it can yield false positives if not performed
+    carefully (!) and b) the values that it outputs are dependent on the
+    global input structure, meaning that you will get different results
+    if you impute a dataset in chunks vs. if you impute those same data
+    points as a set together. Imputation compute-time scales with
+    dataset size, so downsampling prior to imputation may be useful.
+6.  For the SystemToCell measurements, it is generally advisable, though
+    not strictly necessary, to make the tissue cell-number sizes as
+    consistent as possible. Downsampling in this way can also help us to
+    make the data smaller while we design and test this analysis, and
+    then we can choose to increase the size later if we choose.
+
+#### Because of the above findings / decisions, our workflow for NICHES data creation will be as follows:
+
+1.  Load and prepare data received from Allie
+
+-   merge into single object
+-   check annotations and identify which groupings to prioritize for
+    analysis
+-   standardize relevant metadata
+-   remove extraneous metadata
+
+2.  Group data into tissues
+
+3.  Downsample each tissue to a consistent or roughly-consistent size
+
+-   cell number should at least be the same order of magnitude across
+    tissue, and ideally, identical in size
+
+4.  Impute the entire dataset as a block, if possible
+
+-   consider adding condition to only impute genes expressed in a
+    reasonable number of cells
+-   if imputation is taking too long, consider downsampling further
+    and/or moving to HPCs
+-   if absolutely necessary, consider imputing smaller chunks of data.
+    \* recognize that this step of last resort will yield different
+    results
+
+5.  After imputation, save the imputed data (in case R crashes)
+6.  Split the imputed object into a list of objects, one for each tissue
+7.  Set Idents for each tissue to Allie's cell type annotations
+
+-   This matters for uniform sampling of celltype-celltype pairings
+
+7.  Run each tissue object through NICHES
+
+-   Set species (rat), ground truth database to use (FANTOM5)
+-   Run on the 'alra' slot to compute the imputed results, and on the
+    'RNA' slot to also compute raw results
+-   Spatial coordinates are not relevant for this dataset, so we will
+    set the 3 spatial outputs to FALSE.
+-   The SystemToCell and CellToSystem measurements should already be set
+    up for success, because we have already downsampled each tissue to a
+    reasonably consistent size.
+
+8.  Assemble the outputs in a thoughtful way for easy downstream use
+9.  Save the outputs to disk
+10. Move to GlobalConnectomics_Part2
+
+## NICHES Data Creation Workflow
+
+#### Set up workspace, working directory, and color palettes
+
+```{r message=FALSE}
+# Require packages
+require(Seurat)
+require(NICHES)
+
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+
+# Load color palette
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/all.color_palettes_2.R")
+color_pals
+```
+
+#### Load engineered lung and starting cell data
+
+```{r message=FALSE}
+# Load engineered lung and starting cell data
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/epi.seurat.objs.int.2023-07-27.Robj")
+epi <- object
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/endo.seurat.objs.int.2023-07-27.Robj")
+end <- object
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/mes.seurat.objs.int.2023-07-27.Robj")
+mes <- object
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/mac.seurat.objs.int.2023-07-27.Robj")
+imm <- object
+rm(object)
+```
+
+#### Look at data structure and metadata
+
+```{r message=FALSE}
+# Investigate metadata
+# Mes 
+table(mes$Final1,mes$Final2)
+table(mes$Dataset2,mes$Dataset3)
+table(mes$Dataset2,mes$orig.ident)
+# Epi
+table(epi$Final1,epi$Final2)
+table(epi$Dataset2,epi$Dataset3)
+table(epi$Dataset2,epi$orig.ident)
+# Endo
+table(end$Final1,end$Final2)
+table(end$Dataset2,end$Dataset3)
+table(end$Dataset2,end$orig.ident)
+# Immune
+table(imm$Final1,imm$Final2)
+table(imm$Dataset2,imm$Dataset3)
+table(imm$Dataset2,imm$orig.ident)
+```
+
+#### Set Idents to "Final2"
+
+```{r}
+Idents(epi) <- epi$Final2
+Idents(end) <- end$Final2
+Idents(mes) <- mes$Final2
+Idents(imm) <- imm$Final2
+```
+
+#### Merge into one big object to standardize rownames
+
+```{r,message=FALSE}
+# Merge into one big object and set idents as 'Final 2
+merge <- merge(epi,list(end,mes,imm))
+```
+
+```{}
+```
+
+#### Downsample to a consistent (or at least similar) total cell number per tissue
+
+```{r}
+Idents(merge) <- merge$orig.ident
+table(Idents(merge))
+downsampled <- subset(merge,cells = WhichCells(merge,downsample = 5000)) #1K for testing, 5K for publication
+table(Idents(downsampled))
+```
+
+#### Remove extraneous data to speed computation
+
+```{r}
+downsampled@assays$GeneFull <- NULL
+downsampled@assays$spliced <- NULL
+downsampled@assays$unspliced <- NULL
+downsampled@assays$integrated <- NULL
+downsampled
+```
+
+#### Impute as a block
+
+```{r}
+# Pick which genes to impute
+num.cells.per.feature <- 50 # this reduces ALRA false-positives, but it is not a perfect approach
+genes.to.impute <- rownames(downsampled)[rowSums(downsampled@assays$RNA@counts>0)>num.cells.per.feature]
+# impute using ALRA
+options(warn = 1)
+gc()
+downsampled <- SeuratWrappers::RunALRA(downsampled, genes.use = genes.to.impute) # Hold on knit
+
+# Save imputed data for later
+gc()
+save(downsampled,file='downsampled.imputed.Robj') # Hold on knit
+load('downsampled.imputed.Robj')  # Load here from disk on knit
+```
+
+#### Split into individual tissues
+
+```{r}
+table(Idents(downsampled))
+split <- SplitObject(downsampled)
+```
+
+#### Set idents to 'Final 2'
+
+```{r}
+for(i in 1:length(split)){
+  Idents(split[[i]]) <- split[[i]][['Final2']]
+}
+```
+
+#### Run NICHES for each tissue individually, on both the rna and the imputed slots in parallel
+
+```{r message=FALSE}
+output <- list()
+for(i in 1:length(split)){
+    niches.rna <- RunNICHES(split[[i]],
+                             LR.database="fantom5",
+                             species="rat",
+                             assay="RNA",
+                             cell_types = "Final2",
+                             meta.data.to.map = names(split[[i]]@meta.data),
+                             SystemToCell = T,
+                             CellToCell = T,
+                             CellToSystem=T)
+    niches.alra <- RunNICHES(split[[i]],
+                             LR.database="fantom5",
+                             species="rat",
+                             assay="alra",
+                             cell_types = "Final2",
+                             meta.data.to.map = names(split[[i]]@meta.data),
+                             SystemToCell = T,
+                             CellToCell = T,
+                             CellToSystem=T)
+    output[[i]] <- list(niches.rna,niches.alra)
+    names(output[[i]]) <- c('RNA','alra')
+}
+names(output) <- names(split)
+```
+
+#### Organize for downstream processing and save for next script
+
+```{r}
+# Initialize structure
+cell.to.cell.rna <- list()
+cell.to.cell.alra <- list()
+system.to.cell.rna <- list()
+system.to.cell.alra <- list()
+cell.to.system.rna <- list()
+cell.to.system.alra <- list()
+
+# Extract a single data type
+for(i in 1:length(output)){
+  cell.to.cell.rna[[i]] <- output[[i]][['RNA']]$CellToCell
+  cell.to.cell.alra[[i]] <- output[[i]][['alra']]$CellToCell
+  system.to.cell.rna[[i]] <- output[[i]][['RNA']]$SystemToCell
+  system.to.cell.alra[[i]] <- output[[i]][['alra']]$SystemToCell
+  cell.to.system.rna[[i]] <- output[[i]][['RNA']]$CellToSystem
+  cell.to.system.alra[[i]] <- output[[i]][['alra']]$CellToSystem
+}
+
+# Merge
+cell.to.cell.rna <- merge(x = cell.to.cell.rna[[1]],y=cell.to.cell.rna[-1]) 
+cell.to.cell.alra <- merge(cell.to.cell.alra[[1]],cell.to.cell.alra[-1]) 
+system.to.cell.rna <- merge(system.to.cell.rna[[1]],system.to.cell.rna[-1]) 
+system.to.cell.alra <- merge(system.to.cell.alra[[1]],system.to.cell.alra[-1]) 
+cell.to.system.rna <- merge(cell.to.system.rna[[1]],cell.to.system.rna[-1]) 
+cell.to.system.alra <- merge(cell.to.system.alra[[1]],cell.to.system.alra[-1]) 
+
+# Concatenate
+cell.to.cell <- list(cell.to.cell.rna,cell.to.cell.alra)
+system.to.cell <- list(system.to.cell.rna,system.to.cell.alra)
+cell.to.system <- list(cell.to.system.rna,cell.to.system.alra)
+names(cell.to.cell) <- c('RNA','alra')
+names(system.to.cell) <- c('RNA','alra')
+names(cell.to.system) <- c('RNA','alra')
+
+# Put all together
+global.connectomics <- list(cell.to.cell,system.to.cell,cell.to.system)
+names(global.connectomics) <- c('CellToCell','SystemToCell','CellToSystem')
+save(global.connectomics,file = 'global.connectomics.2023-11-11.Robj') # hold for knit
+
+```

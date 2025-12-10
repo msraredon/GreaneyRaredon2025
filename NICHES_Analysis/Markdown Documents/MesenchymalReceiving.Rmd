@@ -1,0 +1,481 @@
+---
+title: "MesenchymalReceiving"
+author: "MSBR"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width = 20,fig.height = 10,warning = FALSE,message = FALSE)
+```
+
+This is a new idea to use CellToCell signaling data to investigate questions that I had previously envisioned looking at using the CellToSystem and SystemToCell measurements.
+
+The CellToSystem and SystemToCell measurements are difficult to analyze and interpret because they aggregate signals coming from or going to multiple cell types. So, although they are accurate and useful, particularly when cellular ratios have changed, the feature-level findings from these analyses inevitably need to then be probed deeper iusing the CellToCell data, to determine who is making/receiving the differental signaling. This is a pain in the ass to have to anlyze a second data set just to understand findings from the first. What if we could do both at once?
+
+An idea: just analyze the CellToCell measurements, which do not involve any aggregation step. If we want to look at mesenchymal microenvironments, for instance, maybe we just pull ALL signals landing on mesenchyme and then go from there. Let's try this and see how it works.
+
+#### Setup Packages
+
+Here we load our required packages for this analysis.
+
+```{r message=F}
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+
+# Require packages
+require(Seurat)
+require(NICHES)
+require(ggplot2)
+require(cowplot)
+require(dplyr)
+require(knitr)
+```
+
+#### Load NICHES data from Part 1
+
+These data have not been filtered, per Part 2 decisions. This seems to be OK for this project, and generally preferable, because some of our measurements, particularly from BCL5, are low-information and we do not want to lose these data points. So, we load from the last save-point, which contains data from a (maximally) deep sampling of the same number of cells from each sample.
+
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/global.connectomics.2023-11-11.Robj")
+```
+
+
+#### Subset out the just specific samples of interest, per Allie's request:
+
+Here we limit all of our downstream analysis to information that came exclusively from the following 5 samples of interest, which will allow us to nicely isolate the effect of macrophages on mesenchymal to epithelial signaling.
+
+```{r}
+samples.of.interest <- c('BEF12','BEF14','BEF15','BEFM1','BEFM2')
+# we will use this set of samples for downstream calculations in this workflow
+```
+
+#### Define colors
+
+This is a temporary color palette, and we should consider updating / polishing for publication.
+
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/all.color_palettes_2.R")
+
+## For now:
+color_pals$type_colors <- c('#A40606','#9CFFFA','#B0DB43','#9C528B','#2F6690',
+                                '#946846','#F1C40F','green','#0F0326','#E65F5C','#14591D','#726DA8',
+                                'yellow','purple','blue','red','orange','darkgrey','magenta')
+names(color_pals$type_colors) <- unique(global.connectomics$CellToCell$alra$SendingType)
+```
+
+#### Isolate Mesenchymal Receiving edges
+
+Let's isolate JUST the CellToCell signaling edges that land on Mesenchyme within this limited dataset:
+
+```{r}
+temp <- global.connectomics$CellToCell$alra # we will use the imputed data, for now
+Idents(temp) <- temp$class.Receiving
+table(Idents(temp))
+mes.rec <- subset(temp, idents = 'Mesenchyme')
+Idents(mes.rec) <- mes.rec$orig.ident
+table(Idents(mes.rec))
+mes.rec <- subset(mes.rec,idents = c(samples.of.interest))
+table(Idents(mes.rec))
+```
+
+Excellent. Let's take a look at things before moving further:
+
+#### Mesenchymal Receiving
+
+```{r}
+mes.rec <- ScaleData(mes.rec)
+mes.rec <- FindVariableFeatures(mes.rec)
+mes.rec <- RunPCA(mes.rec,npcs = 100)
+ElbowPlot(mes.rec,ndims = 100)
+mes.rec <- RunUMAP(mes.rec,dims = 1:30)
+
+p1 <- DimPlot(mes.rec,group.by = 'Dataset2.Sending',cols=color_pals$dataset_colors,raster=F,shuffle = T)
+p2 <- DimPlot(mes.rec,group.by = 'orig.ident',cols = color_pals$sample_colors,raster=F,shuffle = T,label=T)
+p3 <- DimPlot(mes.rec,group.by = 'class.Sending',cols = color_pals$class_colors,raster=F,shuffle = T)
+p4 <- DimPlot(mes.rec,group.by = 'SendingType',cols = color_pals$type_colors,raster=F,shuffle = T)
+
+plot_grid(p1,p2,p3,p4)
+
+pdf(file='MesenchymeReceiving.UMAPS.pdf',width=10,height=8)
+print(plot_grid(p1,p2,p3,p4))
+dev.off()
+```
+
+I actually like this a lot. The idea is to now cluster these data. The clusters will reveal signaling archetypes that are specific to our condition(s) of interest and we can tell after that, rapidly, which sending cell types are driving those observed condtion-specific signaling changes.
+
+```{r}
+mes.rec <- FindNeighbors(mes.rec,dims = 1:30)
+mes.rec <- FindClusters(mes.rec,resolution = 0.2)
+DimPlot(mes.rec,label=T)
+```
+
+Gorgeous. Archetypes 7 and 8, at least at first glance, look very promising for Quad-Culture specific changes to mesenchymal niche signaling (maybe this is good language to use? Need to figure out the most concise way to convery this information.) What is cool about the above graph is that even though both 7 and 8 represent signaling archetypes landing on mesenchyme that are *unique* to quad-culture, 7 represents signaling that is mesenchymal in origin whereas 8 represents signaling that is immune in origin. Endothelial-to-Mesenchyaml signaling, (cluster 5), conversely shows very little change due to the addition of macrophages -- that relationship is basically unperturbed, within our boundary conditions, by the addition of this plus-one cell type. Cluster 6 is epithelial-to-mesenchymal signaling that is specific to quad culture, and while it does not display as agressive of a change as what I've already mentioned, cluster 6 should also probably be looked at, specifically in comparision to cluster 0 (which is tri-culture epi-to-mes communication), because there might be interesting feature-level signal there.
+
+```{r}
+mark <- FindAllMarkers(mes.rec,min.pct = 0.1,logfc.threshold = 0.1)
+mark$ratio <- mark$pct.1/mark$pct.2
+mark$power <- mark$ratio*mark$avg_log2FC
+kable(mark %>% group_by(cluster) %>% top_n(20,ratio))
+```
+
+This is a completely outrageous gene list, the best I have even been able to extract from these data, we should go through it and discuss this afternoon. I am very excited. 
+
+The addition of macrophages causes these tissues to enter a regenerative state. Fibroblast autocrine crosstalk looks like fetal lung / fibrotic lung (i.e. 'frustrated regeneration') and it triggers the epithelium to secrete TNF ligands acting on fibroblasts, totally fucking wild inflammatory state.
+
+Off topic but probably should keep our eyes on endothelium, expressing Bmp4 highly which is a pro-alveolar differentiation cue (present highly in cluster 5 but no idea from this analysis if this is predominantly mesenchymal cue or if the bulk of its effect is more likely on other cells types).
+
+Just as a sanity check, let's makes some NICHESFeaturePlots to see if the signals we have unearthed actually show the desired patterns.
+
+#### Load transcriptomic data (not NICHES data) so that we can make NICHESFeaturePlots (which leverage BOTH data types at once)
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/downsampled.engOnly.customEmbed.2023-12-14.Robj") #'sub'
+```
+
+#### Copy over NICHES_FeaturePlot working function
+
+```{r}
+NICHES_FeaturePlot_v2 <- function(scRNAseq.object,
+                               niches.object,
+                               mechanism.of.interest,
+                               min.connectivity.thresh = 0,
+                               alpha.min = 0,
+                               alpha.max = 0.7,
+                               point.size = 0.1,
+                               line.thickness = 0.1,
+                               arrowhead.size = 0.02,
+                               color.points.by = NULL,
+                               color.edges.by = NULL,
+                               edge.color.palette = NULL,
+                               label.clusters = FALSE, # Whether or not to label the clusters
+                               use.scale = FALSE, # Whether or not to used the scaled connectivity values
+                               global.color.range = NULL # Vector of format c(min,max). This argument allows the uer to set a global color scale that is applied to the output plot.
+                               ){
+  
+  ### Build a base of the original UMAP coordinates
+  message('Extracting embedding coordinates...')
+  umap.coords <- scRNAseq.object@reductions$umap@cell.embeddings
+  # Add the scRNAseq metadata, in case we want to use any of it for plotting:
+  point.meta.data <- scRNAseq.object@meta.data
+  if(sum(rownames(point.meta.data) !=rownames(umap.coords))==0){
+    umap.coords <- cbind(umap.coords,point.meta.data)
+  }else{
+    stop('the rownames for UMAP coords are different from the rownames for point metdata')
+  }
+
+  ### Create connectivity dataframe
+  message('Extracting connectivity dataframe...')
+  # Extract network of interest as a single column
+  # Scaled vs. unscaled connectivity values (default FALSE)
+  if(use.scale==TRUE){
+    if(ncol(niches.object@assays$CellToCell@data) != ncol(niches.object@assays$CellToCell@scale.data)){
+    message('Scaling connectivity data...')
+    niches.object <- ScaleData(niches.object)
+    }else{}
+  }
+  
+  # Extract connectivity data, scaled and unscaled
+  scaled.connectivity <- data.frame(scaled.connectivity = niches.object@assays$CellToCell@scale.data[mechanism.of.interest,])
+  unscaled.connectivity <- data.frame(unscaled.connectivity = niches.object@assays$CellToCell@data[mechanism.of.interest,])
+  
+  # Combine with NICHES metadata to create a big dataframe for plotting
+  to.plot <- cbind(scaled.connectivity,unscaled.connectivity,niches.object@meta.data)
+  
+   # Scaled vs. unscaled connectivity values (default FALSE)
+  if(use.scale==TRUE){
+    message('Using scaled connectivity values...')
+    to.plot$connectivity <- to.plot$scaled.connectivity
+  }else{
+    to.plot$connectivity <- to.plot$unscaled.connectivity
+  }
+  
+  # Rownames to edge identifiers
+  to.plot$edge.ident <- rownames(to.plot)
+  
+  # Splits the barcodes into sending vs. receiving:
+  split.barcodes <- stringr::str_split_fixed(to.plot$edge.ident,"—",2)
+  to.plot$SendingBarcode <- split.barcodes[,1]
+  to.plot$ReceivingBarcode <- split.barcodes[,2]
+  
+  #### Compute the starting and ending points for each edge
+  message('Computing starting and ending points for each edge...')
+  sending.barcode.umap.coords <- data.frame(umap.coords[to.plot$SendingBarcode,])
+  receiving.barcode.umap.coords <- data.frame(umap.coords[to.plot$ReceivingBarcode,])
+  to.plot$sending.barcode.umap1 <- sending.barcode.umap.coords$UMAP_1
+  to.plot$sending.barcode.umap2 <- sending.barcode.umap.coords$UMAP_2
+  to.plot$receiving.barcode.umap1 <- receiving.barcode.umap.coords$UMAP_1
+  to.plot$receiving.barcode.umap2 <- receiving.barcode.umap.coords$UMAP_2
+  
+  ### Perform edge downsampling
+  message('Downsampling edges per user input...')
+  downsampled <- to.plot[to.plot$unscaled.connectivity>min.connectivity.thresh,]
+  
+  ### Log transform connectivity values (IFF using raw connectivity)
+  if(use.scale==TRUE){
+    downsampled$connectivity.to.plot <- downsampled$connectivity
+  }else{
+      message('Log transforming connectivity values...')
+      downsampled$connectivity.to.plot <- log1p(downsampled$connectivity)
+  }
+
+  ### Set color range
+  if(!is.null(global.color.range)){
+    connectivity.color.min <- global.color.range[1]
+    connectivity.color.max <- global.color.range[2]
+  }else{
+      connectivity.color.min <- min(downsampled$connectivity.to.plot)
+      connectivity.color.max <- max(downsampled$connectivity.to.plot)
+  }
+  
+  ### Make plot
+  message('Plotting...')
+  
+  # Build base plot
+  base <- ggplot(data.frame(umap.coords),
+        aes(x=UMAP_1,y=UMAP_2))+
+        theme_classic()
+  
+  # Build output plot
+  output.plot <- base +
+      scale_alpha_continuous(range=c(alpha.min,alpha.max))+ # sets the alpha range for the segments
+      scale_colour_gradientn(colours = c('#4C1E4F','#348AA7','#FAA916','#EF233C'),limits=c(connectivity.color.min,connectivity.color.max))+
+      geom_segment(data = downsampled[sample(rownames(downsampled),size=nrow(downsampled)),], # randomizes the segment plotting order
+                 aes(x = sending.barcode.umap1, 
+                     y = sending.barcode.umap2, 
+                     xend = receiving.barcode.umap1, 
+                     yend = receiving.barcode.umap2,
+                     color = connectivity.to.plot, # shows the relative amount of distortion in the edges
+                    alpha = connectivity.to.plot), # Lower value edges are more translucent
+                linewidth = line.thickness,
+                 arrow = grid::arrow( # Adding this here for the first time, adding little tiny arrowheads to be able to better tell signaling direction
+                   angle = 10, # how 'fat' the arrowheads are
+                   length = unit(arrowhead.size, "npc"), # size of the arrowheads
+                   ends = 'last',
+                   type = 'closed'))+
+      geom_point(size=point.size)
+  
+  # Export plot
+  print(output.plot)
+  return(output.plot)
+}
+```
+
+#### Test that the plotting function(s) work
+
+```{r}
+connectivity <- global.connectomics[['CellToCell']][['alra']]
+connectivity <- ScaleData(connectivity)
+MOI <- 'Wnt7a—Lrp6'
+legend.plot <- DimPlot(sub,group.by = 'class',cols = color_pals$class_colors,label=T)+NoLegend()+ggtitle('Legend')
+network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = sub,
+                   niches.object = connectivity,
+                   mechanism.of.interest = MOI) + ggtitle(paste(MOI,'Connectivity'))+NoLegend()
+plot_grid(legend.plot,network.plot)
+
+```
+
+Good. The plotting function works. But we want to split by M/C/T/Q:
+
+```{r}
+# Build a new metadata slot to split based on M/C/T/Q
+Idents(sub) <- sub$Dataset2
+Idents(connectivity) <- connectivity$Dataset2.Sending
+table(Idents(sub))
+table(Idents(connectivity))
+sub <- RenameIdents(sub,
+                       'Tri_E'='Tri',
+                       'Tri_L'='Tri',
+                       'Quad_E'='Quad',
+                       'Quad_L'='Quad')
+connectivity <- RenameIdents(connectivity,
+                             'Tri_E'='Tri',
+                             'Tri_L'='Tri',
+                             'Quad_E'='Quad',
+                             'Quad_L'='Quad')
+sub$Dataset4 <- Idents(sub)
+connectivity$Dataset4 <- Idents(connectivity)
+
+# Split according to this new slot
+split.befm <- SplitObject(sub,split.by = 'Dataset4')
+split.ctc <- SplitObject(connectivity,split.by = 'Dataset4')
+names(split.befm)
+names(split.ctc)
+```
+
+Now we can make split plots for a given mechanism, like so:
+
+```{r}
+MOI <- 'Wnt7a—Lrp6'
+gc()
+tissues <- names(split.befm)
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.befm[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'class',
+                         cols = color_pals$class_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.befm[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.5,
+                   alpha.max = 0.9,
+                   arrowhead.size = 0.04,
+                   global.color.range = c(min(log1p(connectivity@assays$CellToCell@data[MOI,])),max(log1p(connectivity@assays$CellToCell@data[MOI,]))*0.75))+
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+plot_grid(plotlist = plot.list,nrow=1)
+```
+
+#### Update the NICHESFeaturePlot function (make version v3)
+
+We would like to make the NICHESFeaturePlot function more capable. Among the desired changes are:
+
+1. Allow split.by functionality
+  a. every dot can be shown in each plot
+  b. dots for a certain condition can be emphasized
+2. Color the dots by sending and receiving information
+3. Layer order:
+  a. Base plot, all grey, all common
+  b. Dots per condition, black
+  c. Receiving dots, colored by receptor expression
+  d. Edges, colored by connectivity
+  e. Sending dots, colored by ligand expression
+
+```{r}
+NICHES_FeaturePlot_v3 <- function(scRNAseq.object,
+                               niches.object,
+                               mechanism.of.interest,
+                               min.connectivity.thresh = 0,
+                               alpha.min = 0,
+                               alpha.max = 0.7,
+                               point.size = 0.1,
+                               line.thickness = 0.1,
+                               arrowhead.size = 0.02,
+                               color.points.by = NULL,
+                               color.edges.by = NULL,
+                               edge.color.palette = NULL,
+                               label.clusters = FALSE, # Whether or not to label the clusters
+                               use.scale = FALSE, # Whether or not to used the scaled connectivity values
+                               global.color.range = NULL # Vector of format c(min,max). This argument allows the uer to set a global color scale that is applied to the output plot.
+                               ){
+  
+  ### Build a base of the original UMAP coordinates
+  message('Extracting embedding coordinates...')
+  umap.coords <- scRNAseq.object@reductions$umap@cell.embeddings
+  # Add the scRNAseq metadata, in case we want to use any of it for plotting:
+  point.meta.data <- scRNAseq.object@meta.data
+  if(sum(rownames(point.meta.data) !=rownames(umap.coords))==0){
+    umap.coords <- cbind(umap.coords,point.meta.data)
+  }else{
+    stop('the rownames for UMAP coords are different from the rownames for point metdata')
+  }
+
+  ### Create connectivity dataframe
+  message('Extracting connectivity dataframe...')
+  # Extract network of interest as a single column
+  # Scaled vs. unscaled connectivity values (default FALSE)
+  if(use.scale==TRUE){
+    if(ncol(niches.object@assays$CellToCell@data) != ncol(niches.object@assays$CellToCell@scale.data)){
+    message('Scaling connectivity data...')
+    niches.object <- ScaleData(niches.object)
+    }else{}
+  }
+  
+  # Extract connectivity data, scaled and unscaled
+  scaled.connectivity <- data.frame(scaled.connectivity = niches.object@assays$CellToCell@scale.data[mechanism.of.interest,])
+  unscaled.connectivity <- data.frame(unscaled.connectivity = niches.object@assays$CellToCell@data[mechanism.of.interest,])
+  
+  # Combine with NICHES metadata to create a big dataframe for plotting
+  to.plot <- cbind(scaled.connectivity,unscaled.connectivity,niches.object@meta.data)
+  
+   # Scaled vs. unscaled connectivity values (default FALSE)
+  if(use.scale==TRUE){
+    message('Using scaled connectivity values...')
+    to.plot$connectivity <- to.plot$scaled.connectivity
+  }else{
+    to.plot$connectivity <- to.plot$unscaled.connectivity
+  }
+  
+  # Rownames to edge identifiers
+  to.plot$edge.ident <- rownames(to.plot)
+  
+  # Splits the barcodes into sending vs. receiving:
+  split.barcodes <- stringr::str_split_fixed(to.plot$edge.ident,"—",2)
+  to.plot$SendingBarcode <- split.barcodes[,1]
+  to.plot$ReceivingBarcode <- split.barcodes[,2]
+  
+  #### Compute the starting and ending points for each edge
+  message('Computing starting and ending points for each edge...')
+  sending.barcode.umap.coords <- data.frame(umap.coords[to.plot$SendingBarcode,])
+  receiving.barcode.umap.coords <- data.frame(umap.coords[to.plot$ReceivingBarcode,])
+  to.plot$sending.barcode.umap1 <- sending.barcode.umap.coords$UMAP_1
+  to.plot$sending.barcode.umap2 <- sending.barcode.umap.coords$UMAP_2
+  to.plot$receiving.barcode.umap1 <- receiving.barcode.umap.coords$UMAP_1
+  to.plot$receiving.barcode.umap2 <- receiving.barcode.umap.coords$UMAP_2
+  
+  ### Perform edge downsampling
+  message('Downsampling edges per user input...')
+  downsampled <- to.plot[to.plot$unscaled.connectivity>min.connectivity.thresh,]
+  
+  ### Log transform connectivity values (IFF using raw connectivity)
+  if(use.scale==TRUE){
+    downsampled$connectivity.to.plot <- downsampled$connectivity
+  }else{
+      message('Log transforming connectivity values...')
+      downsampled$connectivity.to.plot <- log1p(downsampled$connectivity)
+  }
+
+  ### Set color range
+  if(!is.null(global.color.range)){
+    connectivity.color.min <- global.color.range[1]
+    connectivity.color.max <- global.color.range[2]
+  }else{
+      connectivity.color.min <- min(downsampled$connectivity.to.plot)
+      connectivity.color.max <- max(downsampled$connectivity.to.plot)
+  }
+  
+  ### Make plot
+  message('Plotting...')
+  
+  # Build base plot
+  base <- ggplot(data.frame(umap.coords),
+        aes(x=UMAP_1,y=UMAP_2))+
+        theme_classic()
+  
+  # Build output plot
+  output.plot <- base +
+      scale_alpha_continuous(range=c(alpha.min,alpha.max))+ # sets the alpha range for the segments
+      scale_colour_gradientn(colours = c('#4C1E4F','#348AA7','#FAA916','#EF233C'),limits=c(connectivity.color.min,connectivity.color.max))+
+      geom_segment(data = downsampled[sample(rownames(downsampled),size=nrow(downsampled)),], # randomizes the segment plotting order
+                 aes(x = sending.barcode.umap1, 
+                     y = sending.barcode.umap2, 
+                     xend = receiving.barcode.umap1, 
+                     yend = receiving.barcode.umap2,
+                     color = connectivity.to.plot, # shows the relative amount of distortion in the edges
+                    alpha = connectivity.to.plot), # Lower value edges are more translucent
+                linewidth = line.thickness,
+                 arrow = grid::arrow( # Adding this here for the first time, adding little tiny arrowheads to be able to better tell signaling direction
+                   angle = 10, # how 'fat' the arrowheads are
+                   length = unit(arrowhead.size, "npc"), # size of the arrowheads
+                   ends = 'last',
+                   type = 'closed'))+
+      geom_point(size=point.size)
+  
+  # Export plot
+  print(output.plot)
+  return(output.plot)
+}
+```

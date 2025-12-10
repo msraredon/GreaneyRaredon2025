@@ -1,0 +1,212 @@
+---
+title: "EpiRecNetwork"
+author: "MSBR"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width = 24,fig.height = 22,warning = FALSE,message = FALSE)
+```
+
+## Introduction
+
+This script creates network plots for specific features that land on epithelium and have been identified as candidates of interest in the BEFM project.
+
+## Set WD
+```{r message=F}
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+```
+
+## Local functions
+```{r}
+
+```
+
+## Packages
+```{r}
+require(Seurat)
+require(NICHES)
+require(dplyr)
+require(ggthemes)
+require(ggplot2)
+require(cowplot)
+require(knitr)
+```
+
+## Load Epi Rec from save
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/epi.rec.Robj")
+```
+
+## Inspect
+```{r}
+epi.rec
+```
+
+## Update to v5
+```{R}
+epi.rec <- UpdateSeuratObject(epi.rec)
+epi.rec
+```
+
+
+######
+
+
+Let's check out some feature plots to keep ourselves oriented on all of these / sanity check ourselves.
+
+#### Load transcriptomic data so that we can make NICHES_FeaturePlots 
+
+```{r}
+ # Transcriptome object is called 'sub'
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/downsampled.engOnly.customEmbed.2023-12-14.Robj") # 'sub'
+```
+
+#### Set up data for NICHES_FeaturePlots
+
+```{r}
+# First we have to scale the connectivity data, just in case we haven't before
+connectivity <- global.connectomics[['CellToCell']][['alra']]
+connectivity <- ScaleData(connectivity)
+```
+
+We often want to split by Mono / Co / Tri / Quad. Currently we don't have a metadata slot that groups in this way. So, let's  create the appropriate metadata slot and organize the levels appropriately for plotting downstream. Note that we need to create parallel metadat slots in both the transcriptomic and connectomic objects.
+
+```{r}
+# Build a new metadata slot ('Dataset4') to split based on M/C/T/Q
+Idents(sub) <- sub$Dataset2
+Idents(connectivity) <- connectivity$Dataset2.Sending
+table(Idents(sub))
+table(Idents(connectivity))
+sub <- RenameIdents(sub,
+                       'Tri_E'='Tri',
+                       'Tri_L'='Tri',
+                       'Quad_E'='Quad',
+                       'Quad_L'='Quad')
+connectivity <- RenameIdents(connectivity,
+                             'Tri_E'='Tri',
+                             'Tri_L'='Tri',
+                             'Quad_E'='Quad',
+                             'Quad_L'='Quad')
+sub$Dataset4 <- Idents(sub)
+connectivity$Dataset4 <- Idents(connectivity)
+
+sub$Dataset4 <- factor(sub$Dataset4,levels=c('Mono','Co','Tri','Quad'))
+connectivity$Dataset4 <- factor(connectivity$Dataset4,levels=c('Mono','Co','Tri','Quad'))
+```
+
+Great. Now we are prepared to make a NICHES_FeaturePlot that splits by 'Dataset4'
+
+```{r}
+# Set up colors for legend plots
+legend.palettes <- color_pals
+# Make the names of legend.palettes correlates with the legends requested below
+names(legend.palettes)[3] <- 'class'
+names(legend.palettes)[1] <- 'Sample' 
+
+# Split according to this new slot
+NICHES_FeaturePlot(transcriptome.object = sub,
+                       connectome.object = connectivity,
+                       mechanism.of.interest = 'Lamb3—Itgb1',
+                       legends.to.plot = c('class','Sample'),
+                       transpose = FALSE,
+                       split.by = 'Dataset4',
+                       legend.palettes = legend.palettes,
+                       min.connectivity.thresh = 0.1)
+```
+Is this relevant? https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5677560/
+This is a potentially interesting review: https://journals.sagepub.com/doi/abs/10.3181/00379727-214-44078
+
+And we can experiment further:
+```{r}
+MOI <- 'Tgfa—Egfr'
+NICHES_FeaturePlot(transcriptome.object = sub,
+                       connectome.object = connectivity,
+                       mechanism.of.interest = MOI,
+                       legends.to.plot = c('class','Sample'), 
+                       transpose = FALSE,
+                       split.by = 'Dataset4',
+                       legend.palettes = legend.palettes,
+                       min.connectivity.thresh = 0.1)
+```
+
+Interesting, what does this look like as a Violin Plot?
+
+```{r}
+p1 <- VlnPlot(connectivity,'Tgfa—Egfr',group.by = 'class.Joint',split.by = 'Dataset4',pt.size = 0,raster = FALSE)
+p2 <- VlnPlot(connectivity,'Tgfa—Egfr',group.by = 'class.Joint',split.by = 'orig.ident',pt.size = 0,raster = FALSE)
+
+plot_grid(p1,p2,nrow = 2)
+```
+
+Cool. Checks out and makes sense. So, adding macrophages promotes connectivity from epithelium to mesenchyme based on Tgfa-Egfr. We should probably research what this mechanism normally does / why it might be important.
+
+Now, let's look at Cluster 5 markers:
+
+Fn1—Itgb6 - integrin beta6 is one of the top defining markers of pulmonary fibrosis. how does fibronectin interact with it / why would it be relevant?
+
+Maybe relevant? https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2267338/
+https://www.atsjournals.org/doi/full/10.1164/rccm.200708-1291OC
+
+Thbs1 - thrombospondin 1, very close to what themis studies, extracellular regulator of fibrosis and wound healing...
+
+Il6—F3 -- -what does this do biologicaly?
+
+Fgf2—Fgfr3 WOW COOL
+
+Wnt16—Fzd6 IS this real? need to check non-imputed data before we run with a random unknown WNT
+Reln—Itga3 might be related to lymphatic or pericytes differentiation?
+Mdk—Tspan1 could be relevant
+Mmp9—Ephb2 interesting or not?
+Fgf7—Fgfr3 GEEZ louise
+Ngf—Kidins220 I don't know what this does but it seems interesting
+Fbn1—Itgb6 yikes this is strongly upregulated
+Tnc—Egfr oh baby cool
+Tfpi—F3 what does this mechanism do ?
+Tgfb1 and assorted receptors strongly up in Quad
+
+Hbegf—Egfr mmmhmm this is here too, (in mes-epi as well as epi-epi)
+Inhba—Acvr2b this is an extracellular modulator of TGFB signaling, worth reading about a bit i think
+Wnt5a and assorted receptors -- amazing -- pro-alveologenesis cue and pro-alveolar epithelial differentiation cue, confirmed to be critical for the resolution of fibrosis in mice: Konigschoof's work
+Bmp2—Bmpr1a -- oo i bet this is cool and real
+
+Let's check a few:
+
+
+```{r}
+MOI <- 'Wnt5a—Fzd6'
+NICHES_FeaturePlot(transcriptome.object = sub,
+                       connectome.object = connectivity,
+                       mechanism.of.interest = MOI,
+                       legends.to.plot = c('class','Sample'),
+                       transpose = FALSE, 
+                       split.by = 'Dataset4',
+                       legend.palettes = legend.palettes,
+                       min.connectivity.thresh = 0.1)
+MOI <- 'Wnt5a—Lrp5'
+NICHES_FeaturePlot(transcriptome.object = sub,
+                       connectome.object = connectivity,
+                       mechanism.of.interest = MOI,
+                       legends.to.plot = c('class','Sample'),
+                       transpose = FALSE, 
+                       split.by = 'Dataset4',
+                       legend.palettes = legend.palettes,
+                       min.connectivity.thresh = 0.1)
+MOI <- 'Wnt5a—Ryk'
+NICHES_FeaturePlot(transcriptome.object = sub,
+                       connectome.object = connectivity,
+                       mechanism.of.interest = MOI,
+                       legends.to.plot = c('class','Sample'),
+                       transpose = FALSE, 
+                       split.by = 'Dataset4',
+                       legend.palettes = legend.palettes,
+                       min.connectivity.thresh = 0.1)
+```
+
+Fascinating. Look at where the yellow lines are concentrated. This is a major pro-alveologenesis mechanism, known in mouse, that we have directly replicated in our engineered system. Allie. Amazing.
+
+#### Conclusions:
+
+This is a powerful way to look at the data.

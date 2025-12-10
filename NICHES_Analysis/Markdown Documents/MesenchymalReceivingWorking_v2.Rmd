@@ -1,0 +1,147 @@
+---
+title: "MesenchymalReceivingWorking"
+author: "MSBR"
+date: "`r Sys.Date()`"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width = 24,fig.height = 22,warning = FALSE,message = FALSE)
+```
+
+## Introduction
+
+This script analyzes mesenchymal niche signaling in the BEFM project
+
+## Set WD
+```{r message=F}
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+```
+
+## Packages
+```{r}
+require(Seurat)
+require(NICHES)
+require(dplyr)
+require(ggthemes)
+require(ggplot2)
+require(cowplot)
+require(knitr)
+```
+
+
+# Local functions
+```{r}
+source('/Users/msbr/GitHub/NICHESMethods/R Scripts/ToolBuilding/NICHES_FeaturePlot.R')
+```
+
+#### Load saved NICHES data from Part 1
+
+Note that no data filtration has been performed, per decisions in Part 2.
+
+As a reminder, these data were made from a 5000 cell-per-sample downsampled object that is then fed into NICHES and the outputs saved. 
+
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/global.connectomics.2023-11-11.Robj")
+```
+
+## Inspect
+```{r}
+global.connectomics
+```
+
+#### Subset out the just specific samples of interest, per Allie's request:
+
+Here we limit all of our downstream analysis to information that came exclusively from the following 5 samples of interest, which will allow us to nicely isolate the effect of macrophages on mesenchymal to mesthelial signaling.
+
+```{r}
+samples.of.interest <- c('BEF12','BEF14','BEF15','BEFM1','BEFM2')
+# we will use this set of samples for downstream calculations in this workflow
+```
+
+#### Define colors
+
+This is a temporary color palette, and we should consider updating / polishing for publication.
+
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/all.color_palettes_2.R")
+
+## For now:
+color_pals$type_colors <- c('#A40606','#9CFFFA','#B0DB43','#9C528B','#2F6690',
+                                '#946846','#F1C40F','green','#0F0326','#E65F5C','#14591D','#726DA8',
+                                'yellow','purple','blue','red','orange','darkgrey','magenta')
+names(color_pals$type_colors) <- unique(global.connectomics$CellToCell$alra$SendingType)
+```
+
+#### Isolate Mesenchymal Receiving edges
+
+Here, we isolated just the CellToCell signaling edges that land on Mesenchyme within this limited dataset. This is a newly discovered approach that seems to work well for this project. It allows us to ask questions like
+
+"How does mesthelial niche signaling change between conditions, who is responsible for the observed changes, and what features are associated with observed shifts?"
+
+
+```{r}
+temp <- global.connectomics$CellToCell$alra # we will use the imputed data, for now
+Idents(temp) <- temp$class.Receiving
+table(Idents(temp))
+mes.rec <- subset(temp, idents = 'Mesenchyme')
+Idents(mes.rec) <- mes.rec$orig.ident
+table(Idents(mes.rec))
+mes.rec <- subset(mes.rec,idents = c(samples.of.interest))
+table(Idents(mes.rec))
+```
+## Clean
+
+Since we are no longer prioritizing BCL5, we can clean these data to help us make prettier plots
+
+```{r}
+VlnPlot(mes.rec,'nFeature_CellToCell',group.by = 'orig.ident')
+mes.rec <- subset(mes.rec,subset = nFeature_CellToCell>100)
+VlnPlot(mes.rec,'nFeature_CellToCell',group.by = 'orig.ident')
+```
+
+Excellent. Let's take a global look at this edge category before moving further:
+
+#### Mesenchyme Receiving - Embed and Cluster
+
+```{r}
+mes.rec <- ScaleData(mes.rec)
+mes.rec <- FindVariableFeatures(mes.rec)
+mes.rec <- RunPCA(mes.rec,npcs = 100)
+ElbowPlot(mes.rec,ndims = 50)
+mes.rec <- RunUMAP(mes.rec,dims = 1:20)
+mes.rec <- FindNeighbors(mes.rec,dims = 1:20)
+mes.rec <- FindClusters(mes.rec,resolution = 0.2)
+```
+
+## Mes Plot
+```{r}
+p1 <- DimPlot(mes.rec,group.by = 'class.Sending',shuffle = T)+ggtitle('Sending CellClass')
+p2 <- DimPlot(mes.rec,group.by = 'class.Receiving',shuffle = T)+ggtitle('Receiving CellClass')
+p3 <- DimPlot(mes.rec,group.by = 'Dataset2.Sending',shuffle = T)+ggtitle('Dataset2')
+p4 <- DimPlot(mes.rec,group.by = 'SendingType',shuffle = T)+ggtitle('Sending CellType')
+p5 <- DimPlot(mes.rec,group.by = 'ReceivingType',shuffle = T)+ggtitle('Receiving CellType')
+p6 <- DimPlot(mes.rec,group.by = 'orig.ident',shuffle = T)+ggtitle('Sample')
+
+# Define plot blocks
+small.mult <- cowplot::plot_grid(p1,p2,p3,p4,p5,p6,ncol = 3)
+sig.arch <- DimPlot(mes.rec,group.by = 'seurat_clusters',shuffle = T,label = T)+ggtitle('Signaling Archetypes')
+split.arch <- DimPlot(mes.rec,split.by = 'orig.ident',group.by = 'seurat_clusters',shuffle = T,ncol = 2)+ggtitle('Signaling Archetypes (Split By Sample)')
+
+# Assemble blocks in cowplot
+top <- small.mult
+bottom <- cowplot::plot_grid(sig.arch,split.arch,rel_widths = c(1.2,1))
+plot <- cowplot::plot_grid(top,bottom,nrow = 2)
+plot
+
+png('Mesenchymal_Receiving.png',width=24,height = 22,units = 'in',res=300)
+print(plot)
+dev.off()
+```
+
+
+## Save for later
+```{r}
+save(mes.rec,file = 'mes.rec.Robj')
+```
+

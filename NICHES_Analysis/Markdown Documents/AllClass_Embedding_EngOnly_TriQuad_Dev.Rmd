@@ -1,0 +1,305 @@
+---
+title: "AllClass_Embedding_EngOnly_TriQuad_Dev"
+author: "MSBR"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width = 10,fig.height = 7,warning = FALSE,message = FALSE)
+```
+
+Custom embedding for just Tri_L and Quad_E samples
+
+#### Set up workspace
+```{r}
+# Require packages
+require(ggplot2)
+require(Seurat)
+require(RColorBrewer)
+require(cowplot)
+require(dplyr)
+library(scales)
+library(viridis)
+
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+
+# Load color palette
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/all.color_palettes_2.R")
+color_pals
+```
+
+#### Load the data from Part 1 that was used to calculate NICHES
+```{r}
+load('downsampled.imputed.Robj')
+## For now:
+color_pals$type_colors <- c('#A40606','#9CFFFA','#B0DB43','#9C528B','#2F6690',
+                                '#946846','#F1C40F','green','#0F0326','#E65F5C','#14591D','#726DA8',
+                                'yellow','purple','blue','red','orange','darkgrey','magenta')
+names(color_pals$type_colors) <- unique(downsampled$Final2)
+```
+
+## Reorder levels
+```{r}
+downsampled$class <- factor(downsampled$class,levels = c('Epithelium','Endothelium','Mesenchyme','Immune'))
+```
+
+As like last time, let's limit UMAP to only working with the variance distinguishing the different classes from each other, but this time, we will remove our starting populations at the outset.
+
+### Remove starting populations
+```{r}
+Idents(downsampled) <- downsampled$Dataset2
+table(Idents(downsampled))
+sub <- subset(downsampled,idents=c('Tri_L','Quad_E'),invert=F)
+table(Idents(sub))
+table(sub$orig.ident)
+```
+
+
+Excellent. Now, we identify those genes that segregate classes, trying to get the calculation to not take very seriously those features that separate batches:
+
+```{r}
+table(sub$class)
+Idents(sub) <- sub$class
+DefaultAssay(sub) <- 'RNA'
+# Old approach (not great here...)
+mark <- FindAllMarkers(sub,min.pct = 0.75,logfc.threshold = 0.5,min.cells.feature = 1000,return.thresh = 0.0000000001) # These high threshold parameters are designed to (mostly) force it to only consider features common to multiple samples
+mark$ratio <- mark$pct.1/mark$pct.2
+mark$power <- mark$ratio*mark$avg_log2FC
+goi <- unique(mark$gene)
+goi
+
+# new experiment for allie
+Idents(sub) <- sub$orig.ident
+bef12 <- subset(sub,idents = 'BEF12')
+bef14 <- subset(sub,idents = 'BEF14')
+bef15 <- subset(sub,idents = 'BEF15')
+befm1 <- subset(sub,idents = 'BEFM1')
+befm2 <- subset(sub,idents = 'BEFM2')
+Idents(bef12) <- bef12$class
+Idents(bef14) <- bef14$class
+Idents(bef15) <- bef15$class
+Idents(befm1) <- befm1$class
+Idents(befm2) <- befm2$class
+table(Idents(befm1))
+table(Idents(befm2))
+mark.bef12 <- FindAllMarkers(bef12,min.pct = 0.75,logfc.threshold = 1) # experimental
+mark.bef14 <- FindAllMarkers(bef14,min.pct = 0.75,logfc.threshold = 1) # experimental
+mark.bef15 <- FindAllMarkers(bef15,min.pct = 0.75,logfc.threshold = 1) # experimental
+mark.befm1 <- FindAllMarkers(befm1,min.pct = 0.75,logfc.threshold = 1) # experimental
+mark.befm2 <- FindAllMarkers(befm2,min.pct = 0.75,logfc.threshold = 1) # experimental
+
+temp <- c(unique(mark.bef12$gene),unique(mark.bef14$gene),unique(mark.bef15$gene),unique(mark.befm1$gene),unique(mark.befm2$gene))
+goi <- names(table(temp)>1)
+
+goi
+
+```
+
+Seems reasonable as a starting point. Let's see what a default UMAP looks like.
+
+```{r}
+sub <- ScaleData(sub,features = goi)
+sub <- RunUMAP(sub,features = goi,seed.use =104657) # playing with seed.use here will modify how the clusters are laid out on the page relative to one another
+p1 <- DimPlot(sub,group.by = 'class',cols = color_pals$class_colors)
+p2 <- DimPlot(sub,group.by = 'orig.ident',cols = color_pals$sample_colors,shuffle = T)
+plot_grid(p1,p2,nrow=1)
+
+```
+
+Not bad, but serious mesenchymal-specific separation (real signal). We don't care for this though, here. let's exclude the variance that separates the mesenchyme samples from one another:
+
+```{r}
+Idents(sub) <- sub$class
+mes.sub <- subset(sub,idents = 'Mesenchyme')
+Idents(mes.sub) <- mes.sub$orig.ident
+mark.to.remove <- FindAllMarkers(mes.sub,min.pct = 0.5,logfc.threshold = 0.5)
+goi.2 <- goi[!(goi %in% mark.to.remove$gene)]
+
+# Add some features that I want in there (help endothelium to separate from mesenchyme)
+goi.2 <- c(goi.2,'Cdh5')
+mark.end <- FindMarkers(sub,ident.1 = 'Endothelium',min.pct = 0.5,logfc.threshold = 0.5)
+mark.end$gene <- rownames(mark.end)
+to.add <- mark.end$gene[!(mark.end$gene %in% mark.to.remove$gene)]
+goi.3 <- unique(c(goi.2,to.add))
+
+sub <- ScaleData(sub,features = goi.3)
+sub <- RunUMAP(sub,features = goi.3,seed.use = 42,min.dist = 0.1) # playing with seed.use here will modify how the clusters are laid out on the page relative to one another
+p1 <- DimPlot(sub,group.by = 'class',cols = color_pals$class_colors)
+p2 <- DimPlot(sub,group.by = 'orig.ident',cols = color_pals$sample_colors,shuffle = T)
+plot_grid(p1,p2,nrow=1)
+```
+
+Looks great!! LEt's save it
+
+
+#### Save for later
+```{r}
+save(sub,file = 'downsampled.engOnly.TriQuad.customEmbed.2024-02-28.Robj') #hold on knit
+```
+
+
+#### Loading NICHES data
+
+Previously computed in Part 1
+
+```{r}
+gc()
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/global.connectomics.2023-11-11.Robj")
+```
+
+#### Subsetting to align with above phenotype object
+
+Otherwise the above function might throw errors.
+
+```{r}
+ctc <- global.connectomics$CellToCell$alra 
+Idents(ctc) <- ctc$Dataset2.Sending
+table(Idents(ctc))
+ctc.sub <- subset(ctc,idents = c('Tri_L','Quad_E'),invert=F)
+table(Idents(ctc.sub))
+ctc.sub <- ScaleData(ctc.sub)
+table(ctc.sub$orig.ident)
+```
+
+## Fine tuning (removing the two macrophages in BEF12!)
+```{r}
+table(Idents(bef12))
+barcodes.remove <- rownames(bef12@meta.data[which(bef12@meta.data$class == 'Immune'),])
+sub.fine <- subset(sub,cells = barcodes.remove,invert=T)
+table(Idents(sub.fine),sub.fine$orig.ident)
+
+Idents(ctc.sub) <- ctc.sub$orig.ident
+bef12.ctc <- subset(ctc.sub,idents = 'BEF12')
+barcodes.remove.ctc <- rownames(bef12.ctc@meta.data[which(bef12.ctc@meta.data$class.Sending == 'Immune'),])
+barcodes.remove.ctc <- c(barcodes.remove.ctc,
+                         rownames(bef12.ctc@meta.data[which(bef12.ctc@meta.data$class.Receiving == 'Immune'),]))
+ctc.sub.fine <- subset(ctc.sub,cells = barcodes.remove.ctc,invert=T)
+table(Idents(ctc.sub.fine),ctc.sub.fine$class.Sending)
+table(Idents(ctc.sub.fine),ctc.sub.fine$class.Receiving)
+
+#save(sub.fine,file = 'transcriptome.TriQuad.finefilter.2024-02-29.Robj')
+#save(ctc.sub.fine,file = 'connectome.TriQuad.finefilter.2024-02-29.Robj')
+```
+
+Now let's make network plots for specific selected mechanisms:
+
+```{r}
+# set up metadata
+sub.fine$Condition <- sub.fine$Dataset2
+ctc.sub.fine$Condition <- ctc.sub.fine$Dataset2.Sending
+sub.fine$Condition <- factor(sub.fine$Condition,levels = c('Tri_L','Quad_E'))
+ctc.sub.fine$Condition <- factor(ctc.sub.fine$Condition,levels = c('Tri_L','Quad_E'))
+
+# fix color palette
+color_pals$class <- color_pals$class_colors
+# wd
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+
+# set feature
+MOI <- 'Wnt7a—Lrp6'
+
+#plot
+png(file = paste(MOI,'NetworkPlot.png',sep='_'),width = 6,height = 5,units = 'in',res=300)
+NICHES_FeaturePlot(transcriptome.object = sub.fine,
+                   connectome.object = ctc.sub.fine,
+                   mechanism.of.interest = MOI,
+                   legends.to.plot = 'class',
+                   legend.palettes = color_pals,
+                   split.by = 'Condition',
+                   min.connectivity.thresh = 0.1,
+                   connectivity.color.min = 0.1,
+                   connectivity.color.max = 1,
+                   line.thickness = 0.1,
+                   black.points = T)
+dev.off()
+
+```
+
+```{r}
+# set feature
+MOI <- 'Osm—Osmr'
+
+NICHES_FeaturePlot(transcriptome.object = sub.fine,
+                   connectome.object = ctc.sub.fine,
+                   mechanism.of.interest = MOI,
+                   legends.to.plot = 'class',
+                   legend.palettes = color_pals,
+                   split.by = 'Condition',
+                   min.connectivity.thresh = 0.1,
+                   connectivity.color.min = 0.1,
+                   connectivity.color.max = 1,
+                   line.thickness = 0.1)
+
+```
+
+```{r}
+# set feature
+MOI <- 'Wnt5a—Fzd7'
+
+NICHES_FeaturePlot(transcriptome.object = sub.fine,
+                   connectome.object = ctc.sub.fine,
+                   mechanism.of.interest = MOI,
+                   legends.to.plot = 'class',
+                   legend.palettes = color_pals,
+                   split.by = 'Condition',
+                   min.connectivity.thresh = 0.1,
+                   connectivity.color.min = 0.1,
+                   connectivity.color.max = 1,
+                   line.thickness = 0.1)
+
+```
+
+## for loop
+```{r}
+# define new metadata slot for finding maximum edge value
+ctc.sub.fine$tempSlot <- paste(ctc.sub.fine$Dataset2.Sending,ctc.sub.fine$class.Joint)
+temp <- AverageExpression(ctc.sub.fine,group.by = 'tempSlot',slot = 'data')
+temp <- data.frame(temp$CellToCell)
+temp$max <- apply(temp, 1, max, na.rm=TRUE)
+temp$mean <- apply(temp, 1, mean, na.rm=TRUE)
+temp$mid <- (temp$max+temp$mean)/2
+
+# set threshold
+min.connectivity.thresh <- 0.5
+
+# epithelium
+for(i in 1:length(row.labels.epi)){
+feature = row.labels.epi[i]
+png(file = paste(feature,'NetworkPlot.png',sep='_'),width = 6,height = 5,units = 'in',res=300)
+print(NICHES_FeaturePlot(transcriptome.object = sub.fine,
+                   connectome.object = ctc.sub.fine,
+                   mechanism.of.interest = feature,
+                   legends.to.plot = 'class',
+                   legend.palettes = color_pals,
+                   split.by = 'Condition',
+                   min.connectivity.thresh = min.connectivity.thresh,
+                   connectivity.color.min = log1p(min.connectivity.thresh),
+                   connectivity.color.max = temp[feature,]$mid,
+                   line.thickness = 0.1,
+                   black.points = T))
+dev.off()
+}
+
+# Endothelium (borrows from other script, need to clean up)
+for(i in 1:length(row.labels.end)){
+feature = row.labels.end[i]
+png(file = paste(feature,'NetworkPlot.png',sep='_'),width = 6,height = 5,units = 'in',res=300)
+print(NICHES_FeaturePlot(transcriptome.object = sub.fine,
+                   connectome.object = ctc.sub.fine,
+                   mechanism.of.interest = feature,
+                   legends.to.plot = 'class',
+                   legend.palettes = color_pals,
+                   split.by = 'Condition',
+                   min.connectivity.thresh = min.connectivity.thresh,
+                   connectivity.color.min = log1p(min.connectivity.thresh),
+                   connectivity.color.max = temp[feature,]$max,
+                   line.thickness = 0.1,
+                   black.points = T))
+dev.off()
+}
+```
+
+
+

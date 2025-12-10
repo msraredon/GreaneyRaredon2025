@@ -1,0 +1,491 @@
+---
+title: "EpiRecFeatures"
+author: "MSBR"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width = 24,fig.height = 22,warning = FALSE,message = FALSE)
+```
+
+## Introduction
+
+This script identifies specific features of interest, landing on epithelium, in the BEFM project.
+
+## Set WD
+```{r message=F}
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+```
+
+## Packages
+```{r}
+require(Seurat)
+require(NICHES)
+require(dplyr)
+require(ggthemes)
+require(ggplot2)
+require(cowplot)
+require(knitr)
+```
+
+## Color palette
+
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/all.color_palettes_2.R")
+color_pals
+```
+
+## Load Epi Rec from save
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/epi.rec.Robj")
+```
+
+## Inspect
+```{r}
+epi.rec
+```
+
+## Update to v5
+```{R}
+epi.rec <- UpdateSeuratObject(epi.rec)
+epi.rec
+```
+## Dimplot for review
+```{r}
+p0 <- DimPlot(
+  epi.rec,
+  reduction = "umap",
+  group.by = c('class.Sending',"Dataset2.Sending", "orig.ident", "seurat_clusters"),
+  combine = FALSE, label.size = 8,shuffle = T,label=T)
+p0 <- cowplot::plot_grid(plotlist = p0,nrow = 1)
+p0
+```
+## Define archetypes for analysis
+```{r}
+epi.rec$Archetype <- epi.rec$seurat_clusters
+Idents(epi.rec) <- epi.rec$Archetype
+```
+
+## Dimplot for review
+```{r}
+p0 <- DimPlot(
+  epi.rec,
+  reduction = "umap",
+  group.by = c('Archetype','class.Sending',"Dataset2.Sending", "orig.ident", "pca_clusters"),
+  combine = FALSE, label.size = 8,shuffle = T,label=T)
+p0 <- cowplot::plot_grid(plotlist = p0,nrow = 1)
+p0
+```
+
+Cluster 3 and 4 will be particularly of interest
+
+3 = Epithelial autocrine associated with BEFM1
+4 = Mesenchymal - Epithelial associated with BEFM1
+
+# Differential expression across archetype
+
+```{r}
+mark <- FindAllMarkers(epi.rec,min.pct = 0.1,logfc.threshold = 0.1)
+mark$ratio <- mark$pct.1/mark$pct.2
+mark$power <- mark$ratio*mark$avg_log2FC
+kable(mark %>% group_by(cluster) %>% top_n(20,ratio))
+```
+
+## Cluster 0 (Mes-Epi Common)
+```{r}
+goi.0 <-  c('Dlk1—Notch1','Bmp5—Bmpr1b','Rspo3—Lrp6',
+                         'Angpt1—Itgb1','Bmp5—Acvr2a','Thbs2—Itgb1',
+                         'Bmp5—Bmpr1a','Thbs2—Cd47','Ptn—Sdc1','Mst1—Mst1r','Fgf7—Fgfr1','Igf2—Igf2r','Bmp5—Bmpr1b','Ptn—Sdc1','Fgf10—Fgfr2','Dkk2—Lrp6','Bmp5—Bmpr2')
+FeaturePlot(epi.rec,
+            features = goi.0,order = T,pt.size=1,label=T,label.size = 8)
+
+```
+
+## Cluster 1 (Epi-Autocrine Common)
+```{r}
+goi.1 <-  c('Efna3—Epha1','Efna3—Epha2','Efna3—Epha4','Ntf4—Ngfr','Il10—Il10rb','Fgf9—Fgfr1','Dlk2—Notch1','Wnt3a—Fzd6','Wnt3a—Lrp6','Wnt3a—Ryk','Fgf9—Fgfr2','Bmp7—Eng','Bmp7—Bmpr1b','Wnt7b—Fzd1','Bmp7—Bmpr2','Areg—Erbb3','Ereg—Erbb3','Areg—Egfr')
+FeaturePlot(epi.rec,
+            features = goi.1,order = T,pt.size=1,label=T,label.size = 8)
+
+```
+
+## Cluster 2 (End-Epi Common)
+```{r}
+goi.2 <-  c('Dll1—Notch2','Dll1—Notch1','Jag1—Notch4','Dll1—Notch3','Bmp3—Bmpr1b','Dll1—Notch4','Gas6—Axl','Tnfsf12—Tnfrsf25','Jag1—Notch3','Bmp6—Bmpr2','Bmp3—Bmpr2','Vegfc—Nrp2','Vip—Sctr','Tnfsf4—Tnfrsf4','Dll4—Notch1','Dll4—Notch2','Pdgfb—Pdgfrb','Angpt2—Tie1','Dll4—Notch3','Dll4—Notch4','Dhh—Ptch1','Sema6d—Plxna1')
+FeaturePlot(epi.rec,
+            features = goi.2,order = T,pt.size=1,label=T,label.size = 8)
+
+```
+
+## Cluster 3 (Epi-Autocrine Quad)
+```{r}
+goi.3 <- c('Tnf—Tnfrsf1b','Sct—Sctr','Wnt7a—Lrp6',
+                         'Npnt—Itgb1','Ereg—Egfr','Wnt7b—Lrp5',
+                         'Hbegf—Egfr','Lamb3—Itga3','Npnt—Itgb1','Tnf—Tnfrsf21','Tnf—Tnfrsf21','Tnf—Ltbr','Lamb3—Itga2','Mmp7—Cd44','Lamb3—Itga2','Btc—Egfr')
+FeaturePlot(epi.rec,
+            features = goi.3,
+            order = T,pt.size = 1,label=T,label.size = 8)
+```
+
+## Cluster 4 (Mes-Epi Quad)
+```{r}
+goi.4 <- c('Fgf1—Fgfr3','Fgf1—Egfr','Fgf1—Fgfr2','Fgf2—Fgfr3','Fgf12—Fgfr3','Lama1—Itga2',
+                         'Csf2—Csf2ra','Ngf—Maged1','Wnt16—Fzd6',
+                         'Fgf7—Fgfr3','Fn1—Itgb6','Vegfa—Ephb2',
+                         'Wnt5a—Lrp5','Col4a1—Itga2','Tnc—Egfr','Tnc—Egfr')
+  
+FeaturePlot(epi.rec,
+            features = goi.4,
+            order = T,pt.size = 1,label=T,label.size = 8)
+```
+
+## Cluster 5 (Imm-Epi Quad)
+```{r}
+goi.5 <- c('Osm—Osmr','Il1b—Il1r1','Il1b—Adrb2','Tnfsf15—Tnfrsf25','Ebi3—Il6st','Il18—Il18r1','Camp—Igf1r','Tnfsf13—Tnfrsf1a','Nrg4—Egfr','Nrg4—Erbb2','Efna2—Epha1','Wnt5a—Ryk','Amh—Egfr','Hgf—Met','Igf1—Igf1r','Cxcl2—Cxcr2')
+  
+FeaturePlot(epi.rec,
+            features = goi.5,
+            order = T,pt.size = 1,label=T,label.size = 8)
+```
+
+## Heatmap
+```{r}
+goi <- mark %>% group_by(cluster) %>% top_n(100,power)
+#goi <- c(goi.0,goi.1,goi.2,goi.3,goi.4,goi.5)
+png('EpiRec.Heatmap.png',width=15,height=24,units='in',res=300)
+CustomHeatmap(epi.rec,
+              data.type = 'CellToCell',
+                 primary = 'seurat_clusters' ,
+                 secondary = 'Dataset2.Sending' ,
+                 tertiary = 'class.Sending' ,
+                 quarternary = 'orig.ident' ,
+                 primary.cols = NULL,
+                 secondary.cols = color_pals$dataset_colors, # Need to be a named list of colors
+                 tertiary.cols = color_pals$class_colors,
+                 quarternary.cols = color_pals$sample_colors,
+                 features = goi$gene,
+                  #features = goi,
+                 labels = c('Signaling Archetype','Condition','Sending Cell Class','Sample'),
+                  selected.row.anotations=c(goi.0,goi.1,goi.2,goi.3,goi.4,goi.5),
+              selected.label.size = 10)
+dev.off()
+```
+
+```{r}
+goi <- mark %>% group_by(cluster) %>% top_n(100,power)
+#goi <- c(goi.0,goi.1,goi.2,goi.3,goi.4,goi.5)
+png('EpiRec.Heatmap.2.png',width=15,height=24,units='in',res=300)
+CustomHeatmap(epi.rec,
+              data.type = 'CellToCell',
+                 primary = 'class.Sending' ,
+                 secondary = 'Dataset2.Sending' ,
+                 tertiary = 'seurat_clusters' ,
+                 quarternary = 'orig.ident' ,
+                 primary.cols = color_pals$class_colors,
+                 secondary.cols = color_pals$dataset_colors, # Need to be a named list of colors
+                 tertiary.cols = NULL,
+                 quarternary.cols = color_pals$sample_colors,
+                 features = goi$gene,
+                  #features = goi,
+                 labels = c('Sending Cell Class','Condition','Signaling Archetype','Sample'),
+                  selected.row.anotations=c(goi.0,goi.1,goi.2,goi.3,goi.4,goi.5),
+              selected.label.size = 10)
+dev.off()
+```
+
+```{r}
+goi <- mark %>% group_by(cluster) %>% top_n(100,power)
+#goi <- c(goi.0,goi.1,goi.2,goi.3,goi.4,goi.5)
+secondary.colors <- c('#6E2594','#F7C59F')
+names(secondary.colors) <- c('Tri_E','Quad_E')
+quarternary.colors <-  c('#55DDE0','#33658A','#2F4858','#F6AE2D','#F26419')
+names(quarternary.colors) <- c('BEF12','BEF14','BEF15','BEFM2','BEFM1')
+png('EpiRec.Heatmap.3.png',width=15,height=24,units='in',res=300)
+CustomHeatmap(epi.rec,
+              data.type = 'CellToCell',
+                 primary = 'seurat_clusters' ,
+                 secondary = 'Dataset2.Sending' ,
+                 tertiary = 'class.Sending' ,
+                 quarternary = 'orig.ident' ,
+                 primary.cols = NULL ,
+                 secondary.cols = secondary.colors, # Need to be a named list of co lors
+                 tertiary.cols = color_pals$class_colors,
+                 quarternary.cols = quarternary.colors,
+                 features = goi$gene,
+                  #features = goi,
+                 labels = c('Sending Cell Class','Condition','Signaling Archetype','Sample'),
+                  selected.row.anotations=c(goi.0,goi.1,goi.2,goi.3,goi.4,goi.5),
+              selected.label.size = 10)
+dev.off()
+```
+
+```{r}
+#goi <- mark %>% group_by(cluster) %>% top_n(100,power)
+goi <- c(goi.0,goi.1,goi.2,goi.3,goi.4,goi.5)
+row.labels <- goi[grep('Wnt|Rspo|Lgr|Lrp|Fzd|Ryk',goi)]
+
+secondary.colors <- c('#6E2594','#F7C59F')
+names(secondary.colors) <- c('Quad_E','Tri_L')
+quarternary.colors <-  c('#55DDE0','#33658A','#2F4858','#F6AE2D','#F26419')
+names(quarternary.colors) <- c('BEF12','BEF14','BEF15','BEFM2','BEFM1')
+
+
+png('EpiRec.Heatmap.4.png',width=15,height=15,units='in',res=300)
+CustomHeatmap(epi.rec,
+              data.type = 'CellToCell',
+                 primary = 'seurat_clusters' ,
+                 secondary = 'Dataset2.Sending' ,
+                 tertiary = 'class.Sending' ,
+                 quarternary = 'orig.ident' ,
+                 primary.cols = NULL ,
+                 secondary.cols = secondary.colors, # Need to be a named list of co lors
+                 tertiary.cols = color_pals$class_colors,
+                 quarternary.cols = quarternary.colors,
+                 #features = goi$gene,
+                  features = goi,
+                 labels = c('Sending Cell Class','Condition','Signaling Archetype','Sample'),
+                  selected.row.anotations=row.labels,
+              selected.label.size = 10)
+dev.off()
+```
+
+```{r}
+#goi <- mark %>% group_by(cluster) %>% top_n(100,power)
+goi <- c(goi.0,goi.1,goi.2,goi.3,goi.4,goi.5)
+row.labels <- goi[grep('Wnt|Rspo|Lgr|Lrp|Fzd|Ryk',goi)]
+
+
+epi.rec$class.Sending <- factor(epi.rec$class.Sending,
+                                   levels = c('Epithelium', 'Endothelium', 'Mesenchyme', 'Immune'))
+epi.rec$Dataset2.Sending <- factor(epi.rec$Dataset2.Sending,
+                                   levels = c('Tri_L','Quad_E'))
+
+png('EpiRec.Heatmap.5.png',width=10,height=10,units='in',res=300)
+CustomHeatmap(epi.rec,
+              data.type = 'CellToCell',
+                 primary = 'Archetype' ,
+                 secondary = 'class.Sending' ,
+                 tertiary = 'Dataset2.Sending' ,
+                 quarternary = 'orig.ident' ,
+                 primary.cols = NULL ,
+                 secondary.cols = color_pals$class_colors,
+                 tertiary.cols = color_pals$dataset_colors[5:6],
+                 quarternary.cols = color_pals$sample_colors,
+                 #features = goi$gene,
+                  features = goi,
+                 labels = c('Signaling Archetype','Sending Cell Class','Condition','Sample'),
+                  selected.row.anotations=row.labels,
+              selected.label.size = 10)
+dev.off()
+```
+```{r}
+Idents(epi.rec) <- epi.rec$seurat_clusters
+table(Idents(epi.rec))
+epi.rec <- RenameIdents(epi.rec,
+                        '0'='Baseline Mes-Epi',
+                        '1'='Baseline Epi-Auto',
+                        '2'='Baseline Endo-Epi',
+                        '3'='Regenerative Epi-Auto',
+                        '4'='Regenerative Mes-Epi',
+                        '5'='Macrophage-Epi')
+table(Idents(epi.rec))
+epi.rec$Archetype <- Idents(epi.rec)
+```
+## Reorder levels
+```{r}
+epi.rec$class.Sending <- factor(epi.rec$class.Sending,levels = c('Epithelium','Endothelium','Mesenchyme','Immune'))
+```
+
+## scale
+```{r}
+epi.rec <- ScaleData(epi.rec)
+```
+## Final heatmap for jalenlia poster
+```{r}
+goi.0 <-  c('Angpt1—Itgb1','Bmp5—Acvr2a','Thbs2—Itgb1',
+                         'Fgf10—Fgfr2','Bmp5—Bmpr1a','Thbs2—Cd47','Dlk1—Notch1','Bmp5—Bmpr1b','Rspo3—Lrp6',
+                         'Angpt1—Itgb1','Bmp5—Acvr2a','Thbs2—Itgb1',
+                         'Bmp5—Bmpr1a','Thbs2—Cd47','Ptn—Sdc1','Mst1—Mst1r','Fgf7—Fgfr1','Igf2—Igf2r','Bmp5—Bmpr1b','Ptn—Sdc1','Dkk2—Lrp6','Bmp5—Bmpr2')
+
+goi.1 <-  c('Efna3—Epha1','Efna3—Epha2','Efna3—Epha4','Ntf4—Ngfr','Il10—Il10rb','Fgf9—Fgfr1','Dlk2—Notch1','Wnt3a—Fzd6','Wnt3a—Lrp6','Wnt3a—Ryk','Wnt7b—Fzd1','Fgf9—Fgfr2','Bmp7—Eng','Bmp7—Bmpr1b','Bmp7—Bmpr2','Areg—Erbb3','Ereg—Erbb3','Areg—Egfr')
+
+goi.2 <-  c('Jag1—Notch4','Dll1—Notch3','Bmp3—Bmpr1b','Dll1—Notch4','Gas6—Axl','Tnfsf12—Tnfrsf25','Jag1—Notch3','Bmp6—Bmpr2','Bmp3—Bmpr2','Vegfc—Nrp2','Vip—Sctr','Dll1—Notch2','Dll1—Notch1','Dhh—Ptch1','Tnfsf4—Tnfrsf4','Dll4—Notch1','Dll4—Notch2','Pdgfb—Pdgfrb','Angpt2—Tie1','Dll4—Notch3','Dll4—Notch4','Sema6d—Plxna1')
+
+goi.3 <- c('Tnf—Tnfrsf1b','Sct—Sctr','Wnt7a—Lrp6',
+                         'Npnt—Itgb1','Ereg—Egfr','Wnt7b—Lrp5',
+                         'Hbegf—Egfr','Lamb3—Itga3','Npnt—Itgb1','Tnf—Tnfrsf21','Tnf—Tnfrsf21','Tnf—Ltbr','Lamb3—Itga2','Mmp7—Cd44','Lamb3—Itga2','Btc—Egfr')
+
+goi.4 <- c('Fgf1—Fgfr3','Fgf1—Egfr','Fgf1—Fgfr2','Fgf2—Fgfr3','Fgf12—Fgfr3','Lama1—Itga2',
+                         'Csf2—Csf2ra','Ngf—Maged1','Wnt16—Fzd6',
+                         'Fgf7—Fgfr3','Fn1—Itgb6','Vegfa—Ephb2',
+                         'Wnt5a—Lrp5','Wnt5a—Ryk','Col4a1—Itga2','Tnc—Egfr')
+  
+goi.5 <- c('Amh—Egfr','Hgf—Met','Igf1—Igf1r','Cxcl2—Cxcr2','Ebi3—Il6st','Il18—Il18r1','Tnfsf13—Tnfrsf1a','Nrg4—Egfr','Nrg4—Erbb2','Efna2—Epha1')
+  
+goi.epi <- unique(c(goi.0,goi.1,goi.2,goi.3,goi.4,goi.5))
+
+row.labels.epi <- c('Bmp5—Bmpr1b','Rspo3—Lrp6','Fgf10—Fgfr2',
+                'Il10—Il10rb','Wnt3a—Fzd6','Wnt7b—Fzd1',
+                'Dll1—Notch2','Vip—Sctr','Dhh—Ptch1',
+                'Sct—Sctr','Wnt7a—Lrp6','Wnt7b—Lrp5',"Lamb3—Itga3",'Tnf—Ltbr',
+                'Fgf7—Fgfr3','Fn1—Itgb6','Col4a1—Itga2','Wnt5a—Ryk' ,'Il18—Il18r1','Nrg4—Egfr')
+
+png('EpiRec.Heatmap.png',width=7,height=9,units='in',res=300)
+CustomHeatmapOnly3(epi.rec,
+              data.type = 'CellToCell',
+                 primary = 'Archetype' ,
+                 secondary = 'class.Sending' ,
+                 tertiary = 'orig.ident' ,
+                 #quarternary = 'orig.ident' ,
+                 primary.cols = NULL ,
+                 secondary.cols = color_pals$class_colors,
+                 tertiary.cols = color_pals$sample_colors,#color_pals$dataset_colors[5:6],
+                 #quarternary.cols = color_pals$sample_colors,
+                 features = goi.epi,
+                 labels = c('Signaling Archetype','Sending Cell Class','Sample'),
+                selected.row.anotations=row.labels.epi,
+              selected.label.size = 10,
+              use.scale.data = T,
+              range.frac = 0.2)
+dev.off()
+```
+
+### Load and pre-process data for Circuit Plot, temporary for Janelia poster
+```{r}
+# test on allie's dataset
+# connectivity data
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/global.connectomics.2023-11-11.Robj")
+# transcriptomic data
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/downsampled.engOnly.customEmbed.2023-12-14.Robj") # 'sub'
+# First we have to scale the connectivity data, just in case we haven't before
+connectivity <- global.connectomics[['CellToCell']][['alra']]
+connectivity <- ScaleData(connectivity)
+# Build a new metadata slot ('Dataset4') to split based on M/C/T/Q
+Idents(sub) <- sub$Dataset2
+Idents(connectivity) <- connectivity$Dataset2.Sending
+table(Idents(sub))
+table(Idents(connectivity))
+sub <- RenameIdents(sub,
+                    'Tri_E'='Tri',
+                    'Tri_L'='Tri',
+                    'Quad_E'='Quad',
+                    'Quad_L'='Quad')
+connectivity <- RenameIdents(connectivity,
+                             'Tri_E'='Tri',
+                             'Tri_L'='Tri',
+                             'Quad_E'='Quad',
+                             'Quad_L'='Quad')
+sub$Dataset4 <- Idents(sub)
+connectivity$Dataset4 <- Idents(connectivity)
+
+sub$Dataset4 <- factor(sub$Dataset4,levels=c('Mono','Co','Tri','Quad'))
+connectivity$Dataset4 <- factor(connectivity$Dataset4,levels=c('Mono','Co','Tri','Quad'))
+
+# Divide up into 4 systems
+Idents(sub) <- sub$Dataset4
+tran.mono <- subset(sub,idents = 'Mono')
+tran.co <- subset(sub,idents = 'Co')
+tran.tri <- subset(sub,idents = 'Tri')
+tran.quad <- subset(sub,idents = 'Quad')
+Idents(connectivity) <- connectivity$Dataset4
+con.mono <- subset(connectivity,idents = 'Mono')
+con.co <- subset(connectivity,idents = 'Co')
+con.tri <- subset(connectivity,idents = 'Tri')
+con.quad <- subset(connectivity,idents = 'Quad')
+
+# Adjust the tri objects to get rid of the tiny population of contaminating macrophages
+table(tran.tri$class)
+table(con.tri$class.Sending)
+table(con.tri$class.Receiving)
+
+Idents(tran.tri) <- tran.tri$class
+tran.tri <- subset(tran.tri,idents = 'Immune',invert = T)
+
+Idents(con.tri) <- con.tri$class.Sending
+con.tri <- subset(con.tri,idents = 'Immune',invert = T)
+Idents(con.tri) <- con.tri$class.Receiving
+con.tri <- subset(con.tri,idents = 'Immune',invert = T)
+
+table(tran.tri$class)
+table(con.tri$class.Sending)
+table(con.tri$class.Receiving)
+
+# defin temp plotting function
+TempFunc <- function(feature,
+                     max.edge.value = 0.1){
+  p4 <- CircuitPlot(transcr.obj = tran.quad,
+              connect.obj = con.quad,
+              feature = feature,
+              group.by = 'class',
+              edge.fixed.size = T,min.edge.value = 0,max.edge.value = max.edge.value,cols.use = cols.use)
+  p3 <- CircuitPlot(transcr.obj = tran.tri,
+              connect.obj = con.tri,
+              feature = feature,
+              group.by = 'class',
+              edge.fixed.size = T,min.edge.value = 0,max.edge.value = max.edge.value,cols.use = cols.use)
+  # p2 <- CircuitPlot(transcr.obj = tran.co,
+  #             connect.obj = con.co,
+  #             feature = feature,
+  #             group.by = 'class',
+  #             edge.fixed.size = T,min.edge.value = 0,max.edge.value = max.edge.value,cols.use = cols.use)
+  # p1 <- CircuitPlot(transcr.obj = tran.mono,
+  #             connect.obj = con.mono,
+  #             feature = feature,
+  #             group.by = 'class',
+  #             edge.fixed.size = T,min.edge.value = 0,max.edge.value = max.edge.value,cols.use = cols.use)
+  print(cowplot::plot_grid(p3,p4,nrow = 1))
+}
+
+```
+
+## Circuitplots for janelia
+```{r}
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+cols.use <- color_pals$class_colors
+
+feature = 'Wnt7a—Lrp6'
+png(filename = paste(feature,'_CircuitPlot.png',sep=''),width = 5,height = 2.5,units = 'in',res=600)
+TempFunc(feature = feature,
+         max.edge.value = 0.25)
+dev.off()
+
+feature = 'Osm—Osmr'
+png(filename = paste(feature,'_CircuitPlot.png',sep=''),width = 5,height = 2.5,units = 'in',res=600)
+TempFunc(feature = feature,
+         max.edge.value = 0.25)
+dev.off()
+
+# define new metadata slot for finding maximum edge value
+merge <- merge(con.tri,con.quad)
+merge$tempSlot <- paste(merge$Dataset2.Sending,merge$class.Joint)
+temp <- AverageExpression(merge,group.by = 'tempSlot',slot = 'counts')
+temp <- data.frame(temp$CellToCell)
+temp$max <- apply(temp, 1, max, na.rm=TRUE)
+
+# epithelium
+for(i in 1:length(row.labels.epi)){
+feature = row.labels.epi[i]
+png(filename = paste(feature,'_CircuitPlot.png',sep=''),width = 5,height = 2.5,units = 'in',res=600)
+TempFunc(feature = feature,
+         max.edge.value = temp[row.labels.epi[i],]$max)
+dev.off()
+}
+
+# Endothelium (borrows from other script, need to clean up)
+for(i in 1:length(row.labels.end)){
+feature = row.labels.end[i]
+png(filename = paste(feature,'_CircuitPlot.png',sep=''),width = 5,height = 2.5,units = 'in',res=600)
+TempFunc(feature = feature,
+         max.edge.value = temp[row.labels.end[i],]$max)
+dev.off()
+}
+
+
+
+# png(filename = paste(feature,'_FeaturePlot.png',sep=''),width = 5,height = 5,units = 'in',res=600)
+# FeaturePlot(epi.rec,features= feature,label = T,max.cutoff = 1,min.cutoff = 0.25, order=T,repel = T)+NoAxes()
+# dev.off()
+```
