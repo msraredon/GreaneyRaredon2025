@@ -17,26 +17,26 @@ Scripts for Greaney & Raredon et al 2024
 "NICHES_Analysis" contains scripts used to create NICHES connectivity data, preliminary exploration of cell-to-cell signaling landscape, archetype analysis, statistical analysis, and figure construction for publication. 
 
 
-Sample names:
-    BC1P3	Starting peBC, passage 3
-    BC1P6	Starting peBC, passage 6
-    FB13	Starting fibroblasts, isolation #13
-    FB14	Starting fibroblasts, isolation #14
-    MacAlv	Bronchoalveolar lavage (may also be referred to as 'BAL')
-    RLMVEC	Starting endothelium
-    BCL5	Epithelial-only Engineered Lung
-    BEF1	Epi-Endo-Mes Engineered Lung, early version #1
-    BEF2	Epi-Endo-Mes Engineered Lung, early version #2
-    BEF3	Epi-Endo-Mes Engineered Lung, early version #3
-    BCEC2	Epi-Endo Engineered Lung
-    BEF12	Epi-Endo-Mes Engineered Lung, late version #1
-    BEF14	Epi-Endo-Mes Engineered Lung, late version #2
-    BEF15	Epi-Endo-Mes Engineered Lung, late version #3
-    BEFM1	Epi-Endo-Mes-Imm Engineered Lung, early version #1
-    BEFM2	Epi-Endo-Mes-Imm Engineered Lung, early version #2
-    BEFM4	Epi-Endo-Mes-Imm Engineered Lung, late version #1
-    BEFM5	Epi-Endo-Mes-Imm Engineered Lung, late version #2
-    BEFM6	Epi-Endo-Mes-Imm Engineered Lung, late version #3
+Sample names:  
+    BC1P3	Starting peBC, passage 3  
+    BC1P6	Starting peBC, passage 6  
+    FB13	Starting fibroblasts, isolation #13  
+    FB14	Starting fibroblasts, isolation #14  
+    MacAlv	Bronchoalveolar lavage (may also be referred to as 'BAL')  
+    RLMVEC	Starting endothelium  
+    BCL5	Epithelial-only Engineered Lung  
+    BEF1	Epi-Endo-Mes Engineered Lung, early version #1  
+    BEF2	Epi-Endo-Mes Engineered Lung, early version #2  
+    BEF3	Epi-Endo-Mes Engineered Lung, early version #3  
+    BCEC2	Epi-Endo Engineered Lung  
+    BEF12	Epi-Endo-Mes Engineered Lung, late version #1  
+    BEF14	Epi-Endo-Mes Engineered Lung, late version #2  
+    BEF15	Epi-Endo-Mes Engineered Lung, late version #3  
+    BEFM1	Epi-Endo-Mes-Imm Engineered Lung, early version #1  
+    BEFM2	Epi-Endo-Mes-Imm Engineered Lung, early version #2  
+    BEFM4	Epi-Endo-Mes-Imm Engineered Lung, late version #1  
+    BEFM5	Epi-Endo-Mes-Imm Engineered Lung, late version #2  
+    BEFM6	Epi-Endo-Mes-Imm Engineered Lung, late version #3  
 
 
 
