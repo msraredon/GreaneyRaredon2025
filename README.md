@@ -10,11 +10,11 @@ Scripts for Greaney & Raredon et al 2024
     clean.R -   
     explore.R -   
 
-"Phenotype_Analysis" contains scripts used to perform class-wise integration, layered cell class and type annotations / metadata construction, transcriptomic statistical analysis, and transcriptomic figure construction for publication.
-    focus.R - 
-    figure.R - 
+"Phenotype_Analysis" contains scripts used to perform class-wise integration, layered cell class and type annotations / metadata construction, transcriptomic statistical analysis, and transcriptomic figure construction for publication.  
+    focus.R -   
+    figure.R -   
 
-"NICHES_Analysis" contains scripts used to create NICHES connectivity data, preliminary exploration of cell-to-cell signaling landscape, archetype analysis, statistical analysis, and figure construction for publication. 
+"NICHES_Analysis" contains scripts used to create NICHES connectivity data, preliminary exploration of cell-to-cell signaling landscape, archetype analysis, statistical analysis, and figure construction for publication.   
 
 
 Sample names:  
