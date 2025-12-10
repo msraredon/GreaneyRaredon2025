@@ -37,18 +37,9 @@ Barcode_rank_plot <- function(path, nBarcodes, xmin, xmax){
   return(p)
 }
 
-##### Pneumonectomy addenda ####
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy_addenda/10x_v2/sample_out/TE1/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 30000 # 1200
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
 
-##### Pneumonectomy v2 ####
+
+##### native v2 ####
 path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/10x_v2/sample_out/mRat/Solo.out/Gene'
 setwd(path)
 nBarcodes <- 30000 # 30000 # 5500
@@ -69,7 +60,7 @@ png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", 
 Barcode_rank_plot(path, nBarcodes, xmin, xmax)
 dev.off()
 
-##### Pneumonectomy v3 ####
+##### native v3 ####
 path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/10x_v3/sample_out/P0-m/Solo.out/Gene'
 setwd(path)
 nBarcodes <- 30000 # 30000 # 7000
@@ -90,187 +81,7 @@ png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", 
 Barcode_rank_plot(path, nBarcodes, xmin, xmax)
 dev.off()
 
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/10x_v3/sample_out/P3-m/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 10500
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
 
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/10x_v3/sample_out/P3-f/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 11000
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/10x_v3/sample_out/P7-m/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 12000
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/10x_v3/sample_out/P7-f/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 8500
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/10x_v3/sample_out/P14-m/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 8500
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/10x_v3/sample_out/P14-f/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 8250
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/10x_v3/sample_out/P28-m/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 9500
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/10x_v3/sample_out/P56-m/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 7750
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-
-##### Pneumonectomy DropSeq ####
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/2-7_rat/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 1400
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/2-8_rat/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 1500
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/2-12_rat/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 900
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/2-14_rat/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 1300
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/2-16_rat/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 1100
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/2-28_rat/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 3000
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/3-1_rat/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 900
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/8-10_rat/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 1200
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/rat1A/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 2200
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/rat811/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 1500
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
 
 
 ##### BEFM #####
@@ -509,36 +320,8 @@ Barcode_rank_plot(path, nBarcodes, xmin, xmax)
 png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
 Barcode_rank_plot(path, nBarcodes, xmin, xmax)
 dev.off()
-##### Organoids #####
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Organoids/sample_out/TCO1/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 1000
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
 
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Organoids/sample_out/TCO2/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 1000
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
 
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Organoids/sample_out/TCO3/Solo.out/Gene'
-setwd(path)
-nBarcodes <- 30000 # 1000
-xmin <- 1
-xmax <- 100000
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-png(paste("BarcodeKneePlot", basename(dirname(dirname(path))), nBarcodes,"png", sep="."), res=200, unit="in", height=6, width=10)
-Barcode_rank_plot(path, nBarcodes, xmin, xmax)
-dev.off()
 
 path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Organoids/sample_out/MacAlv/Solo.out/Gene'
 setwd(path)

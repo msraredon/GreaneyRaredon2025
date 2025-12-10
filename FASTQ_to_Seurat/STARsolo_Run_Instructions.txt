@@ -1,62 +1,37 @@
 ## LOGIN TO GRACE ##
 
-srun --time=4:00:00 --pty --x11 -p bigmem,pi_kaminski -n 1 --cpus-per-task=1 --mem-per-cpu=80000 bash
+srun --time=4:00:00 --pty --x11 -p _________ -n 1 --cpus-per-task=1 --mem-per-cpu=80000 bash
+
 conda activate cutadaptenv
 module load R
 
 
 
-## NAVIGATE TO SOFTWARE FOLDER IN SCRATCH BACKUP OR WHEREVER YOU HAVE TAYLORS SCRIPTS STORED ##
-#cd ~/scratch_public/Backup/Sam/Software
-cd /gpfs/gibbs/pi/kaminski/public/Backup/Sam/Software
+## NAVIGATE TO SOFTWARE FOLDER IN SCRATCH BACKUP OR WHEREVER YOU HAVE SCRIPTS STORED ##
 
-Rscript Sams10X_cutadapt.R ~/scratch60/STARsolo-FASTQs/Pneumonectomy/ ~/scratch60/STARsolo-Output
+
 Rscript Sams10X_cutadapt.R ~/scratch60/STARsolo-FASTQs/BEFM ~/scratch60/STARsolo-Output/BEFM
-Rscript SamsDropSeq_cutadapt.R ~/scratch60/STARsolo-FASTQs/Pneumonectomy/DropSeq ~/scratch60/STARsolo-Output/Pneumonectomy/DropSeq
-Rscript Sams10X_cutadapt.R ~/scratch60/STARsolo-FASTQs/Pneumonectomy/10x_v2 ~/scratch60/STARsolo-Output/Pneumonectomy/10x_v2
-Rscript Sams10X_cutadapt.R ~/scratch60/STARsolo-FASTQs/Pneumonectomy/10x_v3 ~/scratch60/STARsolo-Output/Pneumonectomy/10x_v3
-Rscript Sams10X_cutadapt.R ~/scratch60/STARsolo-FASTQs/Pneumonectomy_addenda/10x_v2 ~/scratch60/STARsolo-Output/Pneumonectomy_addenda/10x_v2
 Rscript Sams10X_cutadapt.R ~/scratch60/STARsolo-FASTQs/BEFM_addenda/10x_v2 ~/scratch60/STARsolo-Output/BEFM_addenda/10x_v2
 Rscript Sams10X_cutadapt.R ~/scratch60/STARsolo-FASTQs/BEFM_addenda/10x_v3 ~/scratch60/STARsolo-Output/BEFM_addenda/10x_v3
-Rscript Sams10X_cutadapt.R ~/scratch60/STARsolo-FASTQs/BEFM2 ~/scratch60/STARsolo-Output/BEFM2
-Rscript Sams10X_cutadapt.R ~/scratch60/STARsolo-FASTQs/Organoids ~/scratch60/STARsolo-Output/Organoids
 Rscript Sams10X_cutadapt.R ~/scratch60/STARsolo-FASTQs/Fibroblasts ~/scratch60/STARsolo-Output/Fibroblasts
-Rscript Sams10X_cutadapt.R ~/scratch60/STARsolo-FASTQs/BCL6 ~/scratch60/STARsolo-Output/BCL6
-Rscript Sams10X_cutadapt.R /gpfs/ysm/home/mbr29/scratch60/STARsolo-Input/FRL /gpfs/ysm/home/mbr29/scratch60/STARsolo-Output/Fetal_Rat_Lung
 
 
 
 ## NAVIGATE TO OUTPUT SCRIPT FOLDER ##
-cd ~/scratch60/STARsolo-Output/BEFM2/scripts/cutadapt
-cd ~/scratch60/STARsolo-Output/Organoids/scripts/cutadapt
-cd ~/scratch60/STARsolo-Output/Fibroblasts/scripts/cutadapt
-cd ~/scratch60/STARsolo-Output/BCL6/scripts/cutadapt
-cd /gpfs/ysm/home/mbr29/scratch60/STARsolo-Output/Fetal_Rat_Lung/scripts/cutadapt
+
+cd scripts/cutadapt
 ./cut.jobsub.bat
 
 
-## NAVIGATE TO SOFTWARE FOLDER IN SCRATCH BACKUP ##
-cd ~/scratch_public/Backup/Sam/Software
+## NAVIGATE TO SOFTWARE FOLDER  ##
 
-Rscript 10X_STARsolo.R ~/scratch60/STARsolo-Output
 Rscript 10X_STARsolo_V3.R ~/scratch60/STARsolo-Output/BEFM
-Rscript DropSeq_STARsolo.R ~/scratch60/STARsolo-Output/Pneumonectomy/DropSeq
-Rscript 10X_STARsolo_V2.R ~/scratch60/STARsolo-Output/Pneumonectomy/10x_v2
-Rscript 10X_STARsolo_V3.R ~/scratch60/STARsolo-Output/Pneumonectomy/10x_v3
-Rscript 10X_STARsolo_V2.R ~/scratch60/STARsolo-Output/Pneumonectomy_addenda/10x_v2
 Rscript 10X_STARsolo_V2.R ~/scratch60/STARsolo-Output/BEFM_addenda/10x_v2
 Rscript 10X_STARsolo_V3.R ~/scratch60/STARsolo-Output/BEFM_addenda/10x_v3
-Rscript 10X_STARsolo_V3.R ~/scratch60/STARsolo-Output/BEFM2
-Rscript 10X_STARsolo_V3_gibbs.R ~/scratch60/STARsolo-Output/Organoids
 Rscript 10X_STARsolo_V2_gibbs.R ~/scratch60/STARsolo-Output/Fibroblasts
-Rscript 10X_STARsolo_V3_gibbs.R ~/scratch60/STARsolo-Output/BCL6
 
 
 
 ## NAVIGATE TO OUTPUT SCRIPT FOLDER ##
-cd ~/scratch60/STARsolo-Output/BEFM2/scripts/STARsolo
-cd ~/scratch60/STARsolo-Output/Fibroblasts/scripts/STARsolo
-cd ~/scratch60/STARsolo-Output/Organoids/scripts/STARsolo
-cd ~/scratch60/STARsolo-Output/BCL6/scripts/STARsolo
 
 ./STARsolo.jobsub.bat

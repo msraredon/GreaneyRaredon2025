@@ -70,15 +70,8 @@ STARsolo_Extraction <- function(path, min.nUMI, threshold.assay = 'Gene'){
 # Set number of top barcodes to grab from each sample
 nBarcodes <- 30000
 
-##### Pneumonectomy addenda ####
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy_addenda/10x_v2/sample_out/TE1/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 3112
-STARsolo_Extraction(path, min.nUMI)
 
-
-##### Pneumonectomy v2 ####
+##### native v2 ####
 path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/10x_v2/sample_out/mRat/Solo.out'
 setwd(path)
 threshold.assay <- 'Gene'
@@ -93,7 +86,7 @@ min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 252
 STARsolo_Extraction(path, min.nUMI)
 
 
-##### Pneumonectomy v3 ####
+##### native v3 ####
 path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/10x_v3/sample_out/P0-m/Solo.out'
 setwd(path)
 threshold.assay <- 'Gene'
@@ -155,69 +148,6 @@ min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 1109
 STARsolo_Extraction(path, min.nUMI)
 
 
-##### Pneumonectomy DropSeq ####
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/2-7_rat/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 333
-STARsolo_Extraction(path, min.nUMI)
-
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/2-8_rat/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 149
-STARsolo_Extraction(path, min.nUMI)
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/2-12_rat/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 160
-STARsolo_Extraction(path, min.nUMI)
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/2-14_rat/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 200
-STARsolo_Extraction(path, min.nUMI)
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/2-16_rat/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 154
-min.nUMI <- 10 #Workaround for very low cutoff
-STARsolo_Extraction(path, min.nUMI)
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/2-28_rat/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 131
-STARsolo_Extraction(path, min.nUMI)
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/3-1_rat/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 139
-min.nUMI <- 10 #Workaround for very low cutoff
-STARsolo_Extraction(path, min.nUMI)
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/8-10_rat/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 146
-STARsolo_Extraction(path, min.nUMI)
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/rat1A/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 267
-STARsolo_Extraction(path, min.nUMI)
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Pneumonectomy/DropSeq/sample_out/rat811/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes) # 217
-STARsolo_Extraction(path, min.nUMI)
 
 
 
@@ -368,24 +298,6 @@ threshold.assay <- 'Gene'
 min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes)
 STARsolo_Extraction(path, min.nUMI)
 
-##### Organoids ####
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Organoids/sample_out/TCO1/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes)
-STARsolo_Extraction(path, min.nUMI)
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Organoids/sample_out/TCO2/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes)
-STARsolo_Extraction(path, min.nUMI)
-
-path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Organoids/sample_out/TCO3/Solo.out'
-setwd(path)
-threshold.assay <- 'Gene'
-min.nUMI <- Define_nUMI_Cutoff(paste(path,'/Gene',sep=''),nBarcodes)
-STARsolo_Extraction(path, min.nUMI)
 
 path <- '/gpfs/loomis/scratch60/kaminski/mbr29/STARsolo-Output/Organoids/sample_out/MacAlv/Solo.out'
 setwd(path)
