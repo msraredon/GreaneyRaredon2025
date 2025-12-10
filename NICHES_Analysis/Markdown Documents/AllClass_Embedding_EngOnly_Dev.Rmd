@@ -1,0 +1,736 @@
+---
+title: "All Class Embedding Development (engineered tissues only)"
+author: "MSBR"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width = 10,fig.height = 7,warning = FALSE,message = FALSE)
+```
+
+This markdown document chronicles effort to develop an all-class embedding that only inlcudes the engineered samples. The point of this is to be able to build nice-looking comparative connectomics NICHES_FeaturePlots for publication.
+
+#### Set up workspace
+```{r}
+# Require packages
+require(ggplot2)
+require(Seurat)
+require(RColorBrewer)
+require(cowplot)
+require(dplyr)
+library(scales)
+library(viridis)
+
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+
+# Load color palette
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/all.color_palettes_2.R")
+color_pals
+```
+
+#### Load the data from Part 1 that was used to calculate NICHES
+```{r}
+load('downsampled.imputed.Robj')
+## For now:
+color_pals$type_colors <- c('#A40606','#9CFFFA','#B0DB43','#9C528B','#2F6690',
+                                '#946846','#F1C40F','green','#0F0326','#E65F5C','#14591D','#726DA8',
+                                'yellow','purple','blue','red','orange','darkgrey','magenta')
+names(color_pals$type_colors) <- unique(downsampled$Final2)
+```
+
+As like last time, let's limit UMAP to only working with the variance distinguishing the different classes from each other, but this time, we will remove our starting populations at the outset.
+
+### Remove starting populations
+```{r}
+Idents(downsampled) <- downsampled$Dataset2
+table(Idents(downsampled))
+sub <- subset(downsampled,idents=c('Start'),invert=T)
+table(Idents(sub))
+table(sub$orig.ident)
+```
+
+Excellent. Now, we identify those genes that segregate classes, trying to get the calculation to not take very seriously those features that separate batches:
+
+```{r}
+table(sub$class)
+Idents(sub) <- sub$class
+DefaultAssay(sub) <- 'RNA'
+mark <- FindAllMarkers(sub,min.pct = 0.5,logfc.threshold = 0.5,min.cells.feature = 1000) # These high threshold parameters are designed to (mostly) force it to only consider features common to multiple samples
+mark$ratio <- mark$pct.1/mark$pct.2
+mark$power <- mark$ratio*mark$avg_log2FC
+goi <- unique(mark$gene)
+goi
+```
+
+Seems reasonable as a starting point. Let's see what a default UMAP looks like.
+
+```{r}
+sub <- ScaleData(sub,features = goi)
+sub <- RunUMAP(sub,features = goi,seed.use = 123) # playing with seed.use here will modify how the clusters are laid out on the page relative to one another
+p1 <- DimPlot(sub,group.by = 'class',cols = color_pals$class_colors)
+p2 <- DimPlot(sub,group.by = 'orig.ident',cols = color_pals$sample_colors,shuffle = T)
+plot_grid(p1,p2,nrow=1)
+
+```
+
+Good enough for now! Let's save it and then see if our current NICHE_FeaturePlot_v2 works on it.
+
+#### Save for later
+```{r}
+#save(sub,file = 'downsampled.engOnly.customEmbed.2023-12-14.Robj') #hold on knit
+```
+
+#### Copy over NICHES_FeaturePlot working function
+
+We will eventually externalize this in its own file, but this allows me to easily modify here now, if I need to.
+
+```{r}
+NICHES_FeaturePlot_v2 <- function(scRNAseq.object,
+                               niches.object,
+                               mechanism.of.interest,
+                               min.connectivity.thresh = 0,
+                               alpha.min = 0,
+                               alpha.max = 0.7,
+                               point.size = 0.1,
+                               line.thickness = 0.1,
+                               arrowhead.size = 0.02,
+                               color.points.by = NULL,
+                               color.edges.by = NULL,
+                               edge.color.palette = NULL,
+                               label.clusters = FALSE, # Whether or not to label the clusters
+                               use.scale = FALSE, # Whether or not to used the scaled connectivity values
+                               global.color.range = NULL # Vector of format c(min,max). This argument allows the uer to set a global color scale that is applied to the output plot.
+                               ){
+  
+  ### Build a base of the original UMAP coordinates
+  message('Extracting embedding coordinates...')
+  umap.coords <- scRNAseq.object@reductions$umap@cell.embeddings
+  # Add the scRNAseq metadata, in case we want to use any of it for plotting:
+  point.meta.data <- scRNAseq.object@meta.data
+  if(sum(rownames(point.meta.data) !=rownames(umap.coords))==0){
+    umap.coords <- cbind(umap.coords,point.meta.data)
+  }else{
+    stop('the rownames for UMAP coords are different from the rownames for point metdata')
+  }
+
+  ### Create connectivity dataframe
+  message('Extracting connectivity dataframe...')
+  # Extract network of interest as a single column
+  # Scaled vs. unscaled connectivity values (default FALSE)
+  if(use.scale==TRUE){
+    if(ncol(niches.object@assays$CellToCell@data) != ncol(niches.object@assays$CellToCell@scale.data)){
+    message('Scaling connectivity data...')
+    niches.object <- ScaleData(niches.object)
+    }else{}
+  }
+  
+  # Extract connectivity data, scaled and unscaled
+  scaled.connectivity <- data.frame(scaled.connectivity = niches.object@assays$CellToCell@scale.data[mechanism.of.interest,])
+  unscaled.connectivity <- data.frame(unscaled.connectivity = niches.object@assays$CellToCell@data[mechanism.of.interest,])
+  
+  # Combine with NICHES metadata to create a big dataframe for plotting
+  to.plot <- cbind(scaled.connectivity,unscaled.connectivity,niches.object@meta.data)
+  
+   # Scaled vs. unscaled connectivity values (default FALSE)
+  if(use.scale==TRUE){
+    message('Using scaled connectivity values...')
+    to.plot$connectivity <- to.plot$scaled.connectivity
+  }else{
+    to.plot$connectivity <- to.plot$unscaled.connectivity
+  }
+  
+  # Rownames to edge identifiers
+  to.plot$edge.ident <- rownames(to.plot)
+  
+  # Splits the barcodes into sending vs. receiving:
+  split.barcodes <- stringr::str_split_fixed(to.plot$edge.ident,"—",2)
+  to.plot$SendingBarcode <- split.barcodes[,1]
+  to.plot$ReceivingBarcode <- split.barcodes[,2]
+  
+  #### Compute the starting and ending points for each edge
+  message('Computing starting and ending points for each edge...')
+  sending.barcode.umap.coords <- data.frame(umap.coords[to.plot$SendingBarcode,])
+  receiving.barcode.umap.coords <- data.frame(umap.coords[to.plot$ReceivingBarcode,])
+  to.plot$sending.barcode.umap1 <- sending.barcode.umap.coords$UMAP_1
+  to.plot$sending.barcode.umap2 <- sending.barcode.umap.coords$UMAP_2
+  to.plot$receiving.barcode.umap1 <- receiving.barcode.umap.coords$UMAP_1
+  to.plot$receiving.barcode.umap2 <- receiving.barcode.umap.coords$UMAP_2
+  
+  ### Perform edge downsampling
+  message('Downsampling edges per user input...')
+  downsampled <- to.plot[to.plot$unscaled.connectivity>min.connectivity.thresh,]
+  
+  ### Log transform connectivity values (IFF using raw connectivity)
+  if(use.scale==TRUE){
+    downsampled$connectivity.to.plot <- downsampled$connectivity
+  }else{
+      message('Log transforming connectivity values...')
+      downsampled$connectivity.to.plot <- log1p(downsampled$connectivity)
+  }
+
+  ### Set color range
+  if(!is.null(global.color.range)){
+    connectivity.color.min <- global.color.range[1]
+    connectivity.color.max <- global.color.range[2]
+  }else{
+      connectivity.color.min <- min(downsampled$connectivity.to.plot)
+      connectivity.color.max <- max(downsampled$connectivity.to.plot)
+  }
+  
+  ### Make plot
+  message('Plotting...')
+  
+  # Build base plot
+  base <- ggplot(data.frame(umap.coords),
+        aes(x=UMAP_1,y=UMAP_2))+
+        theme_classic()
+  
+  # Build output plot
+  output.plot <- base +
+      scale_alpha_continuous(range=c(alpha.min,alpha.max))+ # sets the alpha range for the segments
+      scale_colour_gradientn(colours = c('#4C1E4F','#348AA7','#FAA916','#EF233C'),limits=c(connectivity.color.min,connectivity.color.max))+
+      geom_segment(data = downsampled[sample(rownames(downsampled),size=nrow(downsampled)),], # randomizes the segment plotting order
+                 aes(x = sending.barcode.umap1, 
+                     y = sending.barcode.umap2, 
+                     xend = receiving.barcode.umap1, 
+                     yend = receiving.barcode.umap2,
+                     color = connectivity.to.plot, # shows the relative amount of distortion in the edges
+                    alpha = connectivity.to.plot), # Lower value edges are more translucent
+                linewidth = line.thickness,
+                 arrow = grid::arrow( # Adding this here for the first time, adding little tiny arrowheads to be able to better tell signaling direction
+                   angle = 10, # how 'fat' the arrowheads are
+                   length = unit(arrowhead.size, "npc"), # size of the arrowheads
+                   ends = 'last',
+                   type = 'closed'))+
+      geom_point(size=point.size)
+  
+  # Export plot
+  print(output.plot)
+  return(output.plot)
+}
+```
+
+#### Loading NICHES data
+
+Previously computed in Part 1
+
+```{r}
+gc()
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/global.connectomics.2023-11-11.Robj")
+```
+
+#### Subsetting to align with above phenotype object
+
+Otherwise the above function will throw errors.
+
+```{r}
+ctc <- global.connectomics$CellToCell$alra 
+Idents(ctc) <- ctc$Dataset2.Sending
+table(Idents(ctc))
+ctc.sub <- subset(ctc,idents = 'Start',invert=T)
+table(Idents(ctc.sub))
+ctc.sub <- ScaleData(ctc.sub)
+```
+
+Ok. Let's test one mechanism first:
+
+```{r}
+MOI <- 'Vegfa—Kdr'
+legend.plot <-DimPlot(sub,group.by = 'class',cols = color_pals$class_colors,label=T)+NoLegend()+ggtitle('Legend')
+network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = sub,
+                   niches.object = ctc.sub,
+                   mechanism.of.interest = MOI) + ggtitle(paste(MOI,'Connectivity'))+NoLegend()
+plot_grid(legend.plot,network.plot)
+```
+
+Good! It works. The power of this visualization will be emphasized by splitting it by sample or culture condition category, though. So let's see if we can get that to work.
+
+#### Split the tissue by desired category
+
+Defaulting to orig.ident, here, for first pass
+ 
+```{r}
+split.lung <- SplitObject(sub,split.by = 'orig.ident')
+split.ctc <- SplitObject(ctc.sub,split.by = 'orig.ident')
+names(split.lung)
+names(split.ctc)
+```
+
+And then make a paired plot for each tissue independently:
+
+```{r}
+tissues <- names(split.lung)
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.lung[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'Final2',
+                         cols = color_pals$type_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.lung[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.1,
+                   alpha.max = 0.9,
+                   global.color.range = c(0,2))+ #custom, for now
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+```
+
+And then join them together side by side:
+
+```{r,fig.width=32,fig.height=6}
+plot_grid(plotlist = plot.list,nrow=1)
+```
+What if we we try a mechanism that we know is BEFM1-specific and nice?
+
+```{r}
+MOI <- 'Wnt7a—Lrp6'
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.lung[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'Final2',
+                         cols = color_pals$type_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.lung[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.1,
+                   alpha.max = 0.9,
+                   global.color.range = c(min(log1p(ctc.sub@assays$CellToCell@data[MOI,])),max(log1p(ctc.sub@assays$CellToCell@data[MOI,]))))+
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+```
+
+```{r,fig.width=65,fig.height=10}
+plot_grid(plotlist = plot.list,nrow=1)
+png('test.png',width = 65*.7,height = 10*0.7,units = 'in',res = 200)
+plot_grid(plotlist = plot.list,nrow=1)
+dev.off()
+```
+
+Out of curiousity, what does it look like if we split by M/C/T/Q?
+
+```{r}
+# Build a new metadata slot to split based on M/C/T/Q
+Idents(sub) <- sub$Dataset2
+Idents(ctc.sub) <- ctc.sub$Dataset2.Sending
+table(Idents(sub))
+sub <- RenameIdents(sub,
+                       'Tri_E'='Tri',
+                       'Tri_L'='Tri',
+                       'Quad_E'='Quad',
+                       'Quad_L'='Quad')
+ctc.sub <- RenameIdents(ctc.sub,
+                             'Tri_E'='Tri',
+                             'Tri_L'='Tri',
+                             'Quad_E'='Quad',
+                             'Quad_L'='Quad')
+sub$Dataset4 <- Idents(sub)
+ctc.sub$Dataset4 <- Idents(ctc.sub)
+
+# Split according to this new slot
+split.lung <- SplitObject(sub,split.by = 'Dataset4')
+split.ctc <- SplitObject(ctc.sub,split.by = 'Dataset4')
+names(split.lung)
+names(split.ctc)
+```
+
+And then make a paired plot for each GROUPING of tissues independently:
+
+```{r}
+gc()
+tissues <- names(split.lung)
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.lung[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'Final2',
+                         cols = color_pals$type_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.lung[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.1,
+                   alpha.max = 0.9,
+                   global.color.range = c(min(log1p(ctc.sub@assays$CellToCell@data[MOI,])),max(log1p(ctc.sub@assays$CellToCell@data[MOI,]))))+
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+```
+
+And then join them together side by side:
+
+```{r,fig.width=24,fig.height=6}
+plot_grid(plotlist = plot.list,nrow=1)
+```
+
+Very nice. So this is super cool! Adding macrophages to the community makes the EPITHELIUM produce tons of Wnt7b, which is SENSED by the mesenchyme!! Dope!!! This is what these kind of experiments can tell us!!! Wild.
+
+Ok, let's look for other cool patterns...maybe we take a really global view and compare the conditions to one another without thinking about specific class class crosses?
+
+```{r}
+ctc.sub$Dataset4 <- factor(ctc.sub$Dataset4,levels = c('Mono','Co','Tri','Quad'))
+Idents(ctc.sub) <- ctc.sub$Dataset4
+table(Idents(ctc.sub))
+mark <- FindAllMarkers(ctc.sub,min.pct = 0.05,logfc.threshold = 0.1,only.pos = T)
+mark$ratio <- mark$pct.1/mark$pct.2
+mark$power <- mark$ratio*mark$avg_log2FC
+```
+
+```{r}
+MOI <- 'Wnt4—Fzd6'
+gc()
+tissues <- names(split.lung)
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.lung[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'Final2',
+                         cols = color_pals$type_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.lung[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.1,
+                   alpha.max = 0.9,
+                   global.color.range = c(min(log1p(ctc.sub@assays$CellToCell@data[MOI,])),max(log1p(ctc.sub@assays$CellToCell@data[MOI,]))))+
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+plot_grid(plotlist = plot.list,nrow=1)
+```
+
+```{r}
+MOI <- 'Ereg—Egfr'
+gc()
+tissues <- names(split.lung)
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.lung[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'Final2',
+                         cols = color_pals$type_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.lung[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.1,
+                   alpha.max = 0.9,
+                   global.color.range = c(min(log1p(ctc.sub@assays$CellToCell@data[MOI,])),max(log1p(ctc.sub@assays$CellToCell@data[MOI,]))))+
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+plot_grid(plotlist = plot.list,nrow=1)
+```
+
+```{r}
+MOI <- 'Tgfb1—Itgb6'
+gc()
+tissues <- names(split.lung)
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.lung[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'Final2',
+                         cols = color_pals$type_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.lung[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.1,
+                   alpha.max = 0.9,
+                   global.color.range = c(min(log1p(ctc.sub@assays$CellToCell@data[MOI,])),max(log1p(ctc.sub@assays$CellToCell@data[MOI,]))))+
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+plot_grid(plotlist = plot.list,nrow=1)
+```
+
+```{r}
+MOI <- 'Cxcl6—Cxcr2'
+gc()
+tissues <- names(split.lung)
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.lung[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'Final2',
+                         cols = color_pals$type_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.lung[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.1,
+                   alpha.max = 0.9,
+                   global.color.range = c(min(log1p(ctc.sub@assays$CellToCell@data[MOI,])),max(log1p(ctc.sub@assays$CellToCell@data[MOI,]))))+
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+plot_grid(plotlist = plot.list,nrow=1)
+```
+
+```{r}
+MOI <- 'Bmp8b—Bmpr1b'
+gc()
+tissues <- names(split.lung)
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.lung[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'class',
+                         cols = color_pals$class_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.lung[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.5,
+                   alpha.max = 0.9,
+                   arrowhead.size = 0.04,
+                   global.color.range = c(min(log1p(ctc.sub@assays$CellToCell@data[MOI,])),max(log1p(ctc.sub@assays$CellToCell@data[MOI,]))*0.75))+
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+plot_grid(plotlist = plot.list,nrow=1)
+```
+
+What if we focus just on the changes that occur due to the addition of macrophages?
+
+```{r}
+mark <- FindMarkers(ctc.sub,ident.1 = 'Quad',ident.2 = 'Tri',min.pct = 0.05,logfc.threshold = 0.05,only.pos = T)
+mark$ratio <- mark$pct.1/mark$pct.2
+mark$power <- mark$ratio*mark$avg_log2FC
+```
+
+```{r}
+MOI <- 'Cxcl2—Cxcr2'
+gc()
+tissues <- names(split.lung)
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.lung[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'class',
+                         cols = color_pals$class_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.lung[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.5,
+                   alpha.max = 0.9,
+                   arrowhead.size = 0.04,
+                   global.color.range = c(min(log1p(ctc.sub@assays$CellToCell@data[MOI,])),max(log1p(ctc.sub@assays$CellToCell@data[MOI,]))*0.75))+
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+plot_grid(plotlist = plot.list,nrow=1)
+```
+```{r}
+MOI <- 'Tnf—Tnfrsf1a'
+gc()
+tissues <- names(split.lung)
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.lung[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'class',
+                         cols = color_pals$class_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.lung[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.5,
+                   alpha.max = 0.9,
+                   arrowhead.size = 0.04,
+                   global.color.range = c(min(log1p(ctc.sub@assays$CellToCell@data[MOI,])),max(log1p(ctc.sub@assays$CellToCell@data[MOI,]))*0.75))+
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+plot_grid(plotlist = plot.list,nrow=1)
+```
+
+
+```{r}
+MOI <- 'Hbegf—Erbb2'
+gc()
+tissues <- names(split.lung)
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.lung[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'class',
+                         cols = color_pals$class_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.lung[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.5,
+                   alpha.max = 0.9,
+                   arrowhead.size = 0.04,
+                   global.color.range = c(min(log1p(ctc.sub@assays$CellToCell@data[MOI,])),max(log1p(ctc.sub@assays$CellToCell@data[MOI,]))*0.75))+
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+plot_grid(plotlist = plot.list,nrow=1)
+VlnPlot(ctc.sub,'Hbegf—Erbb2',group.by = 'class.Joint',split.by = 'Dataset4',raster = F,pt.size = 0.1)
+```
+
+```{r}
+MOI <- 'Wnt5a—Fzd6'
+gc()
+tissues <- names(split.lung)
+plot.list <- list()
+for(i in 1:length(tissues)){
+  
+  legend.plot <- DimPlot(split.lung[[tissues[i]]],
+                         reduction='umap',
+                         group.by = 'class',
+                         cols = color_pals$class_colors,
+                         label = T,
+                         shuffle = T)+
+    NoLegend()+
+    ggtitle(tissues[i])+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  network.plot <- NICHES_FeaturePlot_v2(scRNAseq.object = split.lung[[tissues[i]]],
+                   niches.object = split.ctc[[tissues[i]]],
+                   mechanism.of.interest = MOI,
+                   min.connectivity.thresh = 0.5,
+                   alpha.max = 0.9,
+                   arrowhead.size = 0.04,
+                   global.color.range = c(min(log1p(ctc.sub@assays$CellToCell@data[MOI,])),max(log1p(ctc.sub@assays$CellToCell@data[MOI,]))))+
+    ggtitle(paste(MOI,'Connectivity'))+
+    NoLegend()+
+    xlim(-10,10)+
+    ylim(-10,15)
+
+  plot.list[[i]] <- plot_grid(legend.plot,network.plot,ncol = 1)
+}
+plot_grid(plotlist = plot.list,nrow=1)
+```
+
+
+
+
+
+
+

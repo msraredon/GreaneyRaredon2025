@@ -1,0 +1,409 @@
+---
+title: "EndoRecFeatures"
+author: "MSBR"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width = 24,fig.height = 22,warning = FALSE,message = FALSE)
+```
+
+## Introduction
+
+This script identifies specific features of interest, landing on endothelium, in the BEFM project.
+
+## Set WD
+```{r message=F}
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+```
+
+## Packages
+```{r}
+require(Seurat)
+require(NICHES)
+require(dplyr)
+require(ggthemes)
+require(ggplot2)
+require(cowplot)
+require(knitr)
+```
+
+## Load End Rec from save
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/end.rec.Robj")
+```
+
+## Inspect
+```{r}
+end.rec
+```
+
+## Update to v5
+```{R}
+end.rec <- UpdateSeuratObject(end.rec)
+end.rec
+```
+## Dimplot for review ## Should we increase FindClusters(resolution = ...)?
+```{r}
+p0 <- DimPlot(
+  end.rec,
+  reduction = "umap",
+  group.by = c('class.Sending',"Dataset2.Sending", "orig.ident", "seurat_clusters"),
+  combine = FALSE, label.size = 8,shuffle = T,label=T)
+p0 <- cowplot::plot_grid(plotlist = p0,nrow = 1)
+p0
+```
+
+Note: BEFM2 is strongly associated with Cluster 3 signaling. So, let's keep an eye out there
+
+## Define archetypes for analysis
+```{r}
+end.rec$Archetype <- end.rec$seurat_clusters
+Idents(end.rec) <- end.rec$Archetype
+```
+
+## Label archetypes
+```{r}
+Idents(end.rec) <- end.rec$seurat_clusters
+table(Idents(end.rec))
+end.rec <- RenameIdents(end.rec,
+                        '0'='Baseline Mes-Endo',
+                        '1'='Baseline Epi-Endo',
+                        '2'='Baseline Endo-Auto',
+                        '3'='Regenerative Mes-Endo',
+                        '4'='Macrophage-Endo')
+table(Idents(end.rec))
+end.rec$Archetype <- Idents(end.rec)
+```
+
+# Differential expression across archetype
+
+```{r}
+mark <- FindAllMarkers(end.rec,min.pct = 0.1,logfc.threshold = 0.1)
+mark$ratio <- mark$pct.1/mark$pct.2
+mark$power <- mark$ratio*mark$avg_log2FC
+kable(mark %>% group_by(cluster) %>% top_n(20,ratio))
+```
+
+## Reorder levels
+```{r}
+end.rec$class.Sending <- factor(end.rec$class.Sending,levels = c('Epithelium','Endothelium','Mesenchyme','Immune'))
+```
+## scale
+```{r}
+end.rec <- ScaleData(end.rec)
+```
+## final heatmap for janelia
+```{r}
+goi.0 <-  c('Wnt16—Fzd6','Rspo1—Lgr5','Angptl2—Tie1','Lama2—Itga2','Clec11a—Kit','Angpt1—Tie1','Lama2—Itga6','Il15—Il2rg','Cthrc1—Fzd6','Fgf12—Fgfr1','Pdgfc—Flt4','Inhba—Eng')
+
+goi.1 <-  c('Bmp7—Bmpr2','Bmp7—Eng','Wnt3a—Fzd6','Fgf9—Fgfr1','Lamc2—Itgb1',
+            'Il10—Il10rb','Dlk2—Notch1','Wnt7b—Fzd1','Npnt—Itgb1')
+
+goi.2 <-  c('Tnfsf4—Traf2','Dll4—Notch1','Dll4—Notch4','Angpt2—Tek','Pdgfb—Pdgfrb','Dhh—Ptch1','Sema7a—Itgb1')
+
+goi.3 <- c('Olfm2—Robo2','Il15—Il2ra','Thbs1—Tnfrsf11b',
+                          'Igf2—Igf1r','Lif—Lifr','Pdgfc—Pdgfra','Wnt5a—Fzd7',
+                            'Efnb2—Epha3','Rspo1—Lgr4','Cthrc1—Fzd3','Col4a1—Itgb8',
+                              'Vegfa—Egfr','Rspo3—Lgr4','Lamb1—Itga7')
+
+goi.4 <- c('Igf1—Igf1r','Selplg—Esam','Osm—Il6st','Il1b—Il1rap','Pf4—Thbd','Osm—Osmr','Ebi3—Il6st','Tnf—Tnfrsf1a','Sema4d—Plxnb2','Tnfsf15—Tnfrsf25','Il18—Il18rap','Tnfsf9—Traf2','Il7—Il2rg')
+  
+
+goi.end <- unique(c(goi.0,goi.1,goi.2,goi.3,goi.4))
+
+row.labels.end <- c('Angpt1—Tie1','Lama2—Itga6','Cthrc1—Fzd6',
+                'Wnt3a—Fzd6','Fgf9—Fgfr1','Lamc2—Itgb1',
+                'Pdgfb—Pdgfrb','Dll4—Notch1','Dll4—Notch4','Angpt2—Tek',
+                'Wnt5a—Fzd7','Rspo1—Lgr4','Tgfb2—Tgfbr3','Vegfa—Egfr','Igf2—Igf1r',
+                'Tnf—Tnfrsf1a','Sema4d—Plxnb2','Osm—Osmr')
+
+
+# setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+
+png('EndoRec.Heatmap.png',width=7,height=8,units='in',res=300)
+CustomHeatmapOnly3(end.rec,
+              data.type = 'CellToCell',
+                 primary = 'Archetype' ,
+                 secondary = 'class.Sending' ,
+                 tertiary = 'orig.ident' ,
+                 #quarternary = 'orig.ident' ,
+                 primary.cols = NULL ,
+                 secondary.cols = color_pals$class_colors,
+                 tertiary.cols = color_pals$sample_colors,#color_pals$dataset_colors[5:6],
+                 #quarternary.cols = color_pals$sample_colors,
+                 features = goi.end,
+                 labels = c('Signaling Archetype','Sending Cell Class','Sample'),
+                selected.row.anotations=row.labels.end,
+              selected.label.size = 10,
+              use.scale.data = T,
+              range.frac = 0.2)
+dev.off()
+
+# Endothelium circuit plots (borrows from other script, need to clean up)
+for(i in 1:length(row.labels.end)){
+feature = row.labels.end[i]
+png(filename = paste(feature,'_CircuitPlot.png',sep=''),width = 5,height = 2.5,units = 'in',res=600)
+TempFunc(feature = feature,
+         max.edge.value = temp[row.labels.end[i],]$max)
+dev.off()
+}
+
+```
+
+
+###### unedited below #####
+
+## Cluster 3 (BEFM2 Mes->Endo )
+Fzd7 See: https://pubmed.ncbi.nlm.nih.gov/27758766/
+and pericytes are involved in the convo too? https://www.sciencedirect.com/science/article/pii/S0002944014005604
+
+```{r}
+ FeaturePlot(end.rec,
+             features = c('Wnt5a—Fzd7','Olfm2—Robo2','Dlk1—Notch3',
+                          'Bmp5—Bmpr1b','Il15—Il2ra','Thbs1—Tnfrsf11b',
+                          'Igf2—Igf1r','Lif—Lifr','Pdgfc—Pdgfra',
+                            'Igf1—Igf1r','Efnb2—Epha3','Rspo1—Lgr4',
+                            'Tgfb2—Tgfbr3','Cthrc1—Fzd3','Col4a1—Itgb8',
+                              'Vegfa—Egfr','Rspo3—Lgr4','Lamb1—Itga7'),
+             order = T,pt.size = 0.1,label=T,label.size = 2)
+# FeaturePlot(end.rec,
+#             features = c('Wnt5a—Fzd7','','',
+#                          '','','',
+#                          '','',''),
+#             order = T,pt.size = 1,label=T,label.size = 8)
+```
+
+<!-- ## Cluster 4 (BEFM1 Epi->Epi ) -->
+<!-- ```{r} -->
+<!-- FeaturePlot(end.rec, -->
+<!--             features = c('Fgf1—Fgfr3','Fgf1—Egfr','Lama1—Itga2', -->
+<!--                          'Csf2—Csf2ra','Ngf—Maged1','Wnt16—Fzd6', -->
+<!--                          'Fgf7—Fgfr3','Fn1—Itgb6','Vegfa—Ephb2', -->
+<!--                          'Wnt5a—Lrp5','Col4a1—Itga2','Tnc—Egfr'), -->
+<!--             order = T,pt.size = 1,label=T,label.size = 8) -->
+<!-- ``` -->
+
+<!-- ## Cluster 0 (contains BEFM2 Mes-Epi archetype...might need to split?) -->
+<!-- ```{R} -->
+<!-- FeaturePlot(end.rec, -->
+<!--             features = c('Bmp5—Bmpr1b','Dlk1—Notch1','Rspo3—Lrp6', -->
+<!--                          'Angpt1—Itgb1','Bmp5—Acvr2a','Thbs2—Itgb1', -->
+<!--                          'Bmp5—Bmpr1a','Thbs2—Cd47','Ptn—Sdc1'),order = T,pt.size=1,label=T,label.size = 8) -->
+
+<!-- ``` -->
+
+
+################### UNEDITED BELOW ########
+<!-- ############ -->
+
+<!-- QUAD CULTURE PROMOTES ANGIOGENESIS -->
+
+<!-- Cluster 6 is that brought by macrophages -->
+<!-- 4,5 and 8 are associated with cycling cells AND Quad Culture -->
+
+<!-- ```{r} -->
+<!-- mark <- FindAllMarkers(end.rec,min.pct = 0.1,logfc.threshold = 0.1,only.pos=T) -->
+<!-- mark$ratio <- mark$pct.1/mark$pct.2 -->
+<!-- mark$power <- mark$ratio*mark$avg_log2FC -->
+<!-- kable(mark %>% group_by(cluster) %>% top_n(20,ratio)) -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- end.rec <- RenameIdents(end.rec, -->
+<!--                         '0'='Rspondins / Vegfa / Homeostasis', -->
+<!--                         '1'='BEFM1', -->
+<!--                         '2'='Endothelial Autocrine', -->
+<!--                         '3'='Barrier?', -->
+<!--                         '4'='Mesenchymal Angiogenic', -->
+<!--                         '5'='Endothelial Angiogenic', -->
+<!--                         '6'='Immune', -->
+<!--                         '7'='BEFM1', -->
+<!--                         '8'='Endothelial Angiogenic') -->
+
+<!-- ``` -->
+<!-- How how how is the top markers Rspo3-Lgr5 -->
+<!-- >FeaturePlot(end.rec,'Wnt7a—Fzd9',label=T,max.cutoff = 1,order=T) -->
+
+
+
+
+<!-- #### Load transcriptomic data (not NICHES data) so that we can make NICHESFeaturePlots (which leverage BOTH data types at once) -->
+
+<!-- ```{r} -->
+<!--  # Transcriptome object is called 'sub' -->
+<!-- load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/downsampled.engOnly.customEmbed.2023-12-14.Robj") # 'sub' -->
+<!-- ``` -->
+
+<!-- #### Test that the plotting function(s) work -->
+
+<!-- ```{r} -->
+
+<!-- # First we have to scale the connectivity data, just in case we haven't before -->
+<!-- connectivity <- global.connectomics[['CellToCell']][['alra']] -->
+<!-- connectivity <- ScaleData(connectivity) -->
+
+<!-- # Then we set our mechanism of interest for plotting (from the mark test above) -->
+<!-- MOI <- 'Wnt7a—Lrp6' -->
+
+<!-- # Set up colors for legend plots -->
+<!-- legend.palettes <- color_pals -->
+<!-- # Make the names of legend.palettes correlates with the legends requested below -->
+<!-- names(legend.palettes)[3] <- 'class' -->
+<!-- names(legend.palettes)[1] <- 'Sample'  -->
+
+<!-- # Make a network plot with one legend, with plots side by side: -->
+<!-- network.plot <- NICHES_FeaturePlot(transcriptome.object = sub, -->
+<!--                                    connectome.object = connectivity, -->
+<!--                                    mechanism.of.interest = MOI, -->
+<!--                                    legends.to.plot = 'class', -->
+<!--                                    transpose = TRUE, -->
+<!--                                    legend.palettes = legend.palettes) -->
+<!-- network.plot -->
+
+<!-- # Make a network plot with two legends, with plots on top of one another: -->
+<!-- network.plot <- NICHES_FeaturePlot(transcriptome.object = sub, -->
+<!--                                    connectome.object = connectivity, -->
+<!--                                    mechanism.of.interest = MOI, -->
+<!--                                    legends.to.plot = c('class','Sample'), -->
+<!--                                    transpose = FALSE, -->
+<!--                                    legend.palettes = legend.palettes) -->
+<!-- network.plot -->
+
+<!-- ``` -->
+
+<!-- Good. The plotting function works. But we want to split by Mono / Co / Tri / Quad. Currently we don't have a metadata slot that groups in this way. So, let's first create the appropriate metadata slot and organize the levels appropriately for plotting downstream. Note that we need to create parallel metadat slots in both the transcriptomic and connectomic objects. -->
+
+<!-- ```{r} -->
+<!-- # Build a new metadata slot ('Dataset4') to split based on M/C/T/Q -->
+<!-- Idents(sub) <- sub$Dataset2 -->
+<!-- Idents(connectivity) <- connectivity$Dataset2.Sending -->
+<!-- table(Idents(sub)) -->
+<!-- table(Idents(connectivity)) -->
+<!-- sub <- RenameIdents(sub, -->
+<!--                        'Tri_E'='Tri', -->
+<!--                        'Tri_L'='Tri', -->
+<!--                        'Quad_E'='Quad', -->
+<!--                        'Quad_L'='Quad') -->
+<!-- connectivity <- RenameIdents(connectivity, -->
+<!--                              'Tri_E'='Tri', -->
+<!--                              'Tri_L'='Tri', -->
+<!--                              'Quad_E'='Quad', -->
+<!--                              'Quad_L'='Quad') -->
+<!-- sub$Dataset4 <- Idents(sub) -->
+<!-- connectivity$Dataset4 <- Idents(connectivity) -->
+
+<!-- sub$Dataset4 <- factor(sub$Dataset4,levels=c('Mono','Co','Tri','Quad')) -->
+<!-- connectivity$Dataset4 <- factor(connectivity$Dataset4,levels=c('Mono','Co','Tri','Quad')) -->
+<!-- ``` -->
+
+<!-- Great. Now we are prepared to make a NICHES_FeaturePlot that splits by 'Dataset4' -->
+
+<!-- ```{r} -->
+<!-- # Split according to this new slot -->
+<!-- NICHES_FeaturePlot(transcriptome.object = sub, -->
+<!--                        connectome.object = connectivity, -->
+<!--                        mechanism.of.interest = MOI, -->
+<!--                        legends.to.plot = c('class','Sample'), -->
+<!--                        transpose = FALSE, -->
+<!--                        split.by = 'Dataset4', -->
+<!--                        legend.palettes = legend.palettes, -->
+<!--                        min.connectivity.thresh = 0.1) -->
+<!-- ``` -->
+
+<!-- And we can experiment further: -->
+<!-- ```{r} -->
+<!-- MOI <- 'Osm—Osmr' # change MOI, picked from markers for cluster 8 above -->
+<!-- NICHES_FeaturePlot(transcriptome.object = sub, -->
+<!--                        connectome.object = connectivity, -->
+<!--                        mechanism.of.interest = MOI, -->
+<!--                        legends.to.plot = c('class'), # split only by class -->
+<!--                        transpose = TRUE, # transpose -->
+<!--                        split.by = 'Dataset4', -->
+<!--                        legend.palettes = legend.palettes, -->
+<!--                        min.connectivity.thresh = 0.1) -->
+<!-- ``` -->
+
+<!-- This is very cool. Sounds like there is good evidence for macrophage-derived OSM reprogramming fibroblasts so that they help our other cells grow and migrate, in pancreatic cancer at least: https://pubmed.ncbi.nlm.nih.gov/34921158/ -->
+
+<!-- ```{r} -->
+<!-- MOI <- 'Tgfb1—Itgb6' # change MOI, picked from markers for cluster 7 above -->
+<!-- NICHES_FeaturePlot(transcriptome.object = sub, -->
+<!--                        connectome.object = connectivity, -->
+<!--                        mechanism.of.interest = MOI, -->
+<!--                        legends.to.plot = c('class'), # split only by class -->
+<!--                        transpose = TRUE, # transpose -->
+<!--                        split.by = 'Dataset4', -->
+<!--                        legend.palettes = legend.palettes, -->
+<!--                        min.connectivity.thresh = 0.1) -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- MOI <- 'Tnf—Ltbr' # change MOI, picked from markers for cluster 6 above -->
+<!-- NICHES_FeaturePlot(transcriptome.object = sub, -->
+<!--                        connectome.object = connectivity, -->
+<!--                        mechanism.of.interest = MOI, -->
+<!--                        legends.to.plot = c('class'), # split only by class -->
+<!--                        transpose = TRUE, # transpose -->
+<!--                        split.by = 'Dataset4', -->
+<!--                        legend.palettes = legend.palettes, -->
+<!--                        min.connectivity.thresh = 0.1) -->
+<!-- ``` -->
+<!-- DELIGHTFUL! So, it turns out that adding macrophages to our system makes the ENDOTHELIUM and Endothelium and a little bit of the EPITHELIUM secrete TNF which can be sensed by Macrophages and Endothelial cells. -->
+
+<!-- What about matrix production? -->
+
+<!-- ```{r} -->
+<!-- MOI <- 'Npnt—Itgb1' # change MOI, picked from markers for cluster 6 above (epithelial origin) -->
+
+<!-- NICHES_FeaturePlot(transcriptome.object = sub, -->
+<!--                        connectome.object = connectivity, -->
+<!--                        mechanism.of.interest = MOI, -->
+<!--                        legends.to.plot = c('class'), # split only by class -->
+<!--                        transpose = TRUE, # transpose -->
+<!--                        split.by = 'Dataset4', -->
+<!--                        legend.palettes = legend.palettes, -->
+<!--                        min.connectivity.thresh = 0.1) -->
+<!-- ``` -->
+
+<!-- Very cool. NPNT is a matrix protein that promotes angiogenesis: https://www.nature.com/articles/srep36210 -->
+
+<!-- Also: -->
+<!-- ```{r} -->
+<!-- MOI <- 'Bmp3—Bmpr1b' # change MOI, picked from markers for cluster 6 above (epithelial origin) -->
+
+<!-- NICHES_FeaturePlot(transcriptome.object = sub, -->
+<!--                        connectome.object = connectivity, -->
+<!--                        mechanism.of.interest = MOI, -->
+<!--                        legends.to.plot = c('class'), # split only by class -->
+<!--                        transpose = TRUE, # transpose -->
+<!--                        split.by = 'Dataset4', -->
+<!--                        legend.palettes = legend.palettes, -->
+<!--                        min.connectivity.thresh = 0.1) -->
+<!-- ``` -->
+
+<!-- Not sure what Bmp3 does in the lung... -->
+
+<!-- And: -->
+<!-- ```{r} -->
+<!-- MOI <- 'Angpt1—Tie1' # change MOI, picked from markers for cluster 4 above (mesenchymal origin) -->
+
+<!-- NICHES_FeaturePlot(transcriptome.object = sub, -->
+<!--                        connectome.object = connectivity, -->
+<!--                        mechanism.of.interest = MOI, -->
+<!--                        legends.to.plot = c('class'), # split only by class -->
+<!--                        transpose = TRUE, # transpose -->
+<!--                        split.by = 'Dataset4', -->
+<!--                        legend.palettes = legend.palettes, -->
+<!--                        min.connectivity.thresh = 0.5, -->
+<!--                        legend.alpha = 0.75) # bump the legend alpha up -->
+<!-- ``` -->
+
+<!-- Angpt1—Tie1 is a major pro-homeostatic microvascular stabilizing interaction present in the alveolus during normal homeostasis from fibroblasts to endothelium. It is strongly upregulated in quad-culture. -->
+
+<!-- #### Conclusions: -->
+
+<!-- I think this is an efficient and practical workflow to analyze our entire dataset. It means we only have to do this three more times to feel confident that we have at least done a reasonable observation of 'everything' and aren't missing anything obvious. It runs quick, is generalized so it should be easily adaptible to the other classes, and we can generate exciting results and feel confidenat about the answers! I'm on board and I think this works well.  -->
+
+
+

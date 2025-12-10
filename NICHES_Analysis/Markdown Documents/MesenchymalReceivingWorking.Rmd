@@ -1,0 +1,347 @@
+---
+title: "MesenchymalReceivingWorking"
+author: "MSBR"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width = 20,fig.height = 10,warning = FALSE,message = FALSE)
+```
+
+#### Introduction:
+
+This document explains a high-yield way of analyzing NICHES data that is custom-built for the BEFM project (though is probably useful for other project analyzes too.)
+
+This vignette requires as input:
+
+1. Transcriptomic data stored as an R-object, containing a global embedding 
+2. NICHES data stored as an R-object, computed from (1)
+3. (Optional) A color palette corresponding to each metadata slot of interest
+
+#### Overview:
+
+We will perform the following 6 general steps
+
+1. Load NICHES data
+2. Break NICHES CellToCell (edge) data into categories to be analyzed
+3. For each category: analyze edges relative to one another to identify patterns and markers of interest
+4. Load transcriptomic data
+5. Refine/explore findings from (4) using global network visualizations
+6. Make heatmaps that summarize our analysis
+
+#### Setup Packages
+
+Here we set our working directory and load our required packages for this analysis.
+
+```{r message=F}
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+
+# Require packages
+require(Seurat)
+require(NICHES)
+require(ggplot2)
+require(cowplot)
+require(dplyr)
+require(knitr)
+
+# Local functions
+source('/Users/msbr/GitHub/NICHESMethods/R Scripts/ToolBuilding/NICHES_FeaturePlot.R')
+```
+
+#### Load NICHES data from Part 1
+
+These data have not been filtered, per Part 2 decisions. This seems to be OK for this project, and generally preferable, because some of our measurements, particularly from BCL5, are low-information and we do not want to lose these data points. So, we load from the last save-point, which contains data from 5000 random cells pulled from each tissue sample.
+
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/global.connectomics.2023-11-11.Robj")
+```
+
+
+#### Subset out the just specific samples of interest, per Allie's request:
+
+Here we limit all of our downstream analysis to information that came exclusively from the following 5 samples of interest, which will allow us to nicely isolate the effect of macrophages on mesenchymal to epithelial signaling.
+
+```{r}
+samples.of.interest <- c('BEF12','BEF14','BEF15','BEFM1','BEFM2')
+# we will use this set of samples for downstream calculations in this workflow
+```
+
+#### Define colors
+
+This is a temporary color palette, and we should consider updating / polishing for publication.
+
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/all.color_palettes_2.R")
+
+## For now:
+color_pals$type_colors <- c('#A40606','#9CFFFA','#B0DB43','#9C528B','#2F6690',
+                                '#946846','#F1C40F','green','#0F0326','#E65F5C','#14591D','#726DA8',
+                                'yellow','purple','blue','red','orange','darkgrey','magenta')
+names(color_pals$type_colors) <- unique(global.connectomics$CellToCell$alra$SendingType)
+```
+
+#### Isolate Mesenchymal Receiving edges
+
+Here, we isolated just the CellToCell signaling edges that land on Mesenchyme within this limited dataset. This is a newly discovered approach that seems to work well for this project. It allows us to ask questions like
+
+"How does mesenchymal niche signaling change between conditions, who is responsible for the observed changes, and what features are associated with observed shifts?"
+
+
+```{r}
+temp <- global.connectomics$CellToCell$alra # we will use the imputed data, for now
+Idents(temp) <- temp$class.Receiving
+table(Idents(temp))
+mes.rec <- subset(temp, idents = 'Mesenchyme')
+Idents(mes.rec) <- mes.rec$orig.ident
+table(Idents(mes.rec))
+mes.rec <- subset(mes.rec,idents = c(samples.of.interest))
+table(Idents(mes.rec))
+```
+
+Excellent. Let's take a global look at this edge category before moving further:
+
+#### Mesenchymal Receiving
+
+```{r}
+mes.rec <- ScaleData(mes.rec)
+mes.rec <- FindVariableFeatures(mes.rec)
+mes.rec <- RunPCA(mes.rec,npcs = 100)
+ElbowPlot(mes.rec,ndims = 100)
+mes.rec <- RunUMAP(mes.rec,dims = 1:30)
+
+p1 <- DimPlot(mes.rec,group.by = 'Dataset2.Sending',cols=color_pals$dataset_colors,raster=F,shuffle = T)
+p2 <- DimPlot(mes.rec,group.by = 'orig.ident',cols = color_pals$sample_colors,raster=F,shuffle = T,label=T)
+p3 <- DimPlot(mes.rec,group.by = 'class.Sending',cols = color_pals$class_colors,raster=F,shuffle = T)
+p4 <- DimPlot(mes.rec,group.by = 'SendingType',cols = color_pals$type_colors,raster=F,shuffle = T)
+
+plot_grid(p1,p2,p3,p4)
+
+pdf(file='MesenchymeReceiving.UMAPS.pdf',width=10,height=8)
+print(plot_grid(p1,p2,p3,p4))
+dev.off()
+```
+
+I actually like this a lot. The idea is to now cluster these data. The clusters will reveal signaling archetypes that are specific to our condition(s) of interest. WThe resulting patterns will help us to determine which sending cell types are driving cross-condition changes in extracellular signaling within the mesenchymal niche.
+
+```{r}
+mes.rec <- FindNeighbors(mes.rec,dims = 1:30)
+mes.rec <- FindClusters(mes.rec,resolution = 0.2)
+DimPlot(mes.rec,label=T)
+
+p5 <- DimPlot(mes.rec,label=T)
+p6 <- DimPlot(mes.rec,group.by = 'ReceivingType',cols = color_pals$type_colors,raster=F,shuffle = T)
+pdf(file='MesenchymeReceivingClustered.UMAPS.pdf',width=10,height=8)
+print(plot_grid(p1,p3,p4,p2,p5,p6))
+dev.off()
+```
+
+Gorgeous. Some thoughts:
+
+1. Archetypes 7 and 8 show that there are Quad-Culture specific changes to mesenchymal niche signaling. 
+2. One thing that is interesting about the above graph is that even though both 7 and 8 represent mesenchymal niche signaling archetypes *unique* to quad-culture, 7 is mesenchymal in origin whereas 8 is immune in origin. 
+3. Endothelial-to-Mesenchymal signaling is represented by archetype 5. Very little change is observed due to the addition of macrophages. We can say confidently that the endothelial-to-mesenchymal relationship is minimally unperturbed within our experimental setting by the addition of macrophages. 
+4. Epithelial-to-mesenchymal signaling, conversely, shows a signifcant shift (archetype 0 shifts to archetype 6). There might be interesting feature-level patterns here that we would want to look at more deeply.
+
+Let's run a marker list across all archetypes to better understand feature-level changes that are driving the observed embedding and clustering patterns.
+
+```{r}
+mark <- FindAllMarkers(mes.rec,min.pct = 0.1,logfc.threshold = 0.1)
+mark$ratio <- mark$pct.1/mark$pct.2
+mark$power <- mark$ratio*mark$avg_log2FC
+kable(mark %>% group_by(cluster) %>% top_n(20,ratio))
+```
+
+This is a remarkable gene list filled with interesting connectivity patterns. The signal extracted from the data in this way is stronger than most datasets I am used to analyzing. We should probabyl study this marker list closely to better understand our data.
+
+Some thoughts:
+
+1. The addition of macrophages causes these tissues to enter a regenerative state. Fibroblast autocrine crosstalk displays mechanisms that I am used to seeing in fetal lung and fibrotic lung (i.e. 'frustrated regeneration').
+
+2. We observe epithelium secreting TNF ligands active on fibroblasts, suggesting that the epithelium is promoting the activation of fibroblast inflammatory programming.
+
+3. It is interesting that the endothelium appears to express Bmp4 highly, which is a well-established pro-alveolar differentiation cue. We see this signal in archetype 5, but we cannot know from this test if this signal is predominantly acting on mesenchymal cells or if other (i.e., epithelial cells) are more sensitive to this cue than the mesenchyme.
+
+To check these kinds of things, and to better understand our findings, I recommend using the function 'NICHES_FeaturePlot' which is designed to allow gloabl, dataset-wide observation of connectivity patterns for specific features. 
+
+Let's makes some NICHESFeaturePlots to see if the signals we have unearthed actually show the desired patterns and make sense to act as reportable findings for our study:
+
+#### Load transcriptomic data (not NICHES data) so that we can make NICHESFeaturePlots (which leverage BOTH data types at once)
+
+```{r}
+ # Transcriptome object is called 'sub'
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/downsampled.engOnly.customEmbed.2023-12-14.Robj") # 'sub'
+```
+
+#### Test that the plotting function(s) work
+
+```{r}
+
+# First we have to scale the connectivity data, just in case we haven't before
+connectivity <- global.connectomics[['CellToCell']][['alra']]
+connectivity <- ScaleData(connectivity)
+
+# Then we set our mechanism of interest for plotting (from the mark test above)
+MOI <- 'Wnt7a—Lrp6'
+
+# Set up colors for legend plots
+legend.palettes <- color_pals
+# Make the names of legend.palettes correlates with the legends requested below
+names(legend.palettes)[3] <- 'class'
+names(legend.palettes)[1] <- 'Sample' 
+
+# Make a network plot with one legend, with plots side by side:
+network.plot <- NICHES_FeaturePlot(transcriptome.object = sub,
+                                   connectome.object = connectivity,
+                                   mechanism.of.interest = MOI,
+                                   legends.to.plot = 'class',
+                                   transpose = TRUE,
+                                   legend.palettes = legend.palettes)
+network.plot
+
+# Make a network plot with two legends, with plots on top of one another:
+network.plot <- NICHES_FeaturePlot(transcriptome.object = sub,
+                                   connectome.object = connectivity,
+                                   mechanism.of.interest = MOI,
+                                   legends.to.plot = c('class','Sample'),
+                                   transpose = FALSE,
+                                   legend.palettes = legend.palettes)
+network.plot
+
+```
+
+Good. The plotting function works. But we want to split by Mono / Co / Tri / Quad. Currently we don't have a metadata slot that groups in this way. So, let's first create the appropriate metadata slot and organize the levels appropriately for plotting downstream. Note that we need to create parallel metadat slots in both the transcriptomic and connectomic objects.
+
+```{r}
+# Build a new metadata slot ('Dataset4') to split based on M/C/T/Q
+Idents(sub) <- sub$Dataset2
+Idents(connectivity) <- connectivity$Dataset2.Sending
+table(Idents(sub))
+table(Idents(connectivity))
+sub <- RenameIdents(sub,
+                       'Tri_E'='Tri',
+                       'Tri_L'='Tri',
+                       'Quad_E'='Quad',
+                       'Quad_L'='Quad')
+connectivity <- RenameIdents(connectivity,
+                             'Tri_E'='Tri',
+                             'Tri_L'='Tri',
+                             'Quad_E'='Quad',
+                             'Quad_L'='Quad')
+sub$Dataset4 <- Idents(sub)
+connectivity$Dataset4 <- Idents(connectivity)
+
+sub$Dataset4 <- factor(sub$Dataset4,levels=c('Mono','Co','Tri','Quad'))
+connectivity$Dataset4 <- factor(connectivity$Dataset4,levels=c('Mono','Co','Tri','Quad'))
+```
+
+Great. Now we are prepared to make a NICHES_FeaturePlot that splits by 'Dataset4'
+
+```{r}
+# Split according to this new slot
+NICHES_FeaturePlot(transcriptome.object = sub,
+                       connectome.object = connectivity,
+                       mechanism.of.interest = MOI,
+                       legends.to.plot = c('class','Sample'),
+                       transpose = FALSE,
+                       split.by = 'Dataset4',
+                       legend.palettes = legend.palettes,
+                       min.connectivity.thresh = 0.1)
+```
+
+And we can experiment further:
+```{r}
+MOI <- 'Osm—Osmr' # change MOI, picked from markers for cluster 8 above
+NICHES_FeaturePlot(transcriptome.object = sub,
+                       connectome.object = connectivity,
+                       mechanism.of.interest = MOI,
+                       legends.to.plot = c('class'), # split only by class
+                       transpose = TRUE, # transpose
+                       split.by = 'Dataset4',
+                       legend.palettes = legend.palettes,
+                       min.connectivity.thresh = 0.1)
+```
+
+This is very cool. Sounds like there is good evidence for macrophage-derived OSM reprogramming fibroblasts so that they help our other cells grow and migrate, in pancreatic cancer at least: https://pubmed.ncbi.nlm.nih.gov/34921158/
+
+```{r}
+MOI <- 'Tgfb1—Itgb6' # change MOI, picked from markers for cluster 7 above
+NICHES_FeaturePlot(transcriptome.object = sub,
+                       connectome.object = connectivity,
+                       mechanism.of.interest = MOI,
+                       legends.to.plot = c('class'), # split only by class
+                       transpose = TRUE, # transpose
+                       split.by = 'Dataset4',
+                       legend.palettes = legend.palettes,
+                       min.connectivity.thresh = 0.1)
+```
+```{r}
+MOI <- 'Tnf—Ltbr' # change MOI, picked from markers for cluster 6 above
+NICHES_FeaturePlot(transcriptome.object = sub,
+                       connectome.object = connectivity,
+                       mechanism.of.interest = MOI,
+                       legends.to.plot = c('class'), # split only by class
+                       transpose = TRUE, # transpose
+                       split.by = 'Dataset4',
+                       legend.palettes = legend.palettes,
+                       min.connectivity.thresh = 0.1)
+```
+DELIGHTFUL! So, it turns out that adding macrophages to our system makes the ENDOTHELIUM and MESENCHYME and a little bit of the EPITHELIUM secrete TNF which can be sensed by Macrophages and Epithelial cells.
+
+What about matrix production?
+
+```{r}
+MOI <- 'Npnt—Itgb1' # change MOI, picked from markers for cluster 6 above (epithelial origin)
+
+NICHES_FeaturePlot(transcriptome.object = sub,
+                       connectome.object = connectivity,
+                       mechanism.of.interest = MOI,
+                       legends.to.plot = c('class'), # split only by class
+                       transpose = TRUE, # transpose
+                       split.by = 'Dataset4',
+                       legend.palettes = legend.palettes,
+                       min.connectivity.thresh = 0.1)
+```
+
+Very cool. NPNT is a matrix protein that promotes angiogenesis: https://www.nature.com/articles/srep36210
+
+Also:
+```{r}
+MOI <- 'Bmp3—Bmpr1b' # change MOI, picked from markers for cluster 6 above (epithelial origin)
+
+NICHES_FeaturePlot(transcriptome.object = sub,
+                       connectome.object = connectivity,
+                       mechanism.of.interest = MOI,
+                       legends.to.plot = c('class'), # split only by class
+                       transpose = TRUE, # transpose
+                       split.by = 'Dataset4',
+                       legend.palettes = legend.palettes,
+                       min.connectivity.thresh = 0.1)
+```
+
+Not sure what Bmp3 does in the lung...
+
+And:
+```{r}
+MOI <- 'Angpt1—Tie1' # change MOI, picked from markers for cluster 4 above (mesenchymal origin)
+
+NICHES_FeaturePlot(transcriptome.object = sub,
+                       connectome.object = connectivity,
+                       mechanism.of.interest = MOI,
+                       legends.to.plot = c('class'), # split only by class
+                       transpose = TRUE, # transpose
+                       split.by = 'Dataset4',
+                       legend.palettes = legend.palettes,
+                       min.connectivity.thresh = 0.5,
+                       legend.alpha = 0.75) # bump the legend alpha up
+```
+
+Angpt1—Tie1 is a major pro-homeostatic microvascular stabilizing interaction present in the alveolus during normal homeostasis from fibroblasts to endothelium. It is strongly upregulated in quad-culture.
+
+#### Conclusions:
+
+I think this is an efficient and practical workflow to analyze our entire dataset. It means we only have to do this three more times to feel confident that we have at least done a reasonable observation of 'everything' and aren't missing anything obvious. It runs quick, is generalized so it should be easily adaptible to the other classes, and we can generate exciting results and feel confidenat about the answers! I'm on board and I think this works well. 
+
+
+

@@ -1,0 +1,268 @@
+---
+title: "MesEpi_QuickDirty_2023-11-07"
+author: "MSBR"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width = 20,fig.height = 10)
+```
+
+This script is a quick-and-dirty workflow to look specifically at mesenchymal to epithelial signaling in the BEFM project data.
+
+We will do this three specific ways: we will look at Mesenchymal influence, the Epithelial microenvironment, and Mesencymal-Epithelial signaling. These three lenses should allow us to clearly understand what is going on.
+
+If we like what it produces, it may be a useful standardized framework to look at the full dataset, later. This workflow is experimental for now.
+
+#### Setup Packages
+
+```{r message=F}
+# Set WD
+setwd("/Users/msbr/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics")
+
+# Require packages
+require(Seurat)
+require(NICHES)
+require(ggplot2)
+require(cowplot)
+require(dplyr)
+require(knitr)
+```
+
+#### Load NICHES data from Part 1
+
+These data have not been filtered, per Part 2 decisions. It seems to be OK.
+
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Global_Connectomics/global.connectomics.2023-10-27.Robj")
+```
+
+#### Define colors
+
+This is a temporary color palette, and should be updated for publication.
+
+```{r}
+load("~/Library/CloudStorage/GoogleDrive-michasam.raredon@yale.edu/.shortcut-targets-by-id/1VLqBlyzO-Qad5O2kbwXkBRh_1cQho39t/Engineered Lung Paper/Allie's Object Filtration/Final Objects/all.color_palettes_2.R")
+
+## For now:
+color_pals$type_colors <- c('#A40606','#9CFFFA','#B0DB43','#9C528B','#2F6690',
+                                '#946846','#F1C40F','green','#0F0326','#E65F5C','#14591D','#726DA8',
+                                'yellow','purple','blue','red','orange','darkgrey','magenta')
+names(color_pals$type_colors) <- unique(global.connectomics$CellToCell$alra$SendingType)
+```
+
+#### Isolate Mesenchymal Influence
+
+This is just the Mesenchymal Cell-To-System data, which incorporate information about both cell-signaling character and cell population presence / absence / representation.
+
+```{r}
+temp <- global.connectomics$CellToSystem$alra # let's just look at the imputed data, for now, for ease
+Idents(temp) <- temp$class
+table(Idents(temp))
+mes.inf <- subset(temp, idents = 'Mesenchyme')
+```
+
+#### Isolate Epithelial Microenvironment
+
+This is just the Epithelial System-To-Cell data, which incorporates information about all signaling landing on Epithelium, regardless of source. It changes, like above, both with changing cellular phenotype and with altered cell population representation.
+
+```{r}
+temp <- global.connectomics$SystemToCell$alra
+Idents(temp) <- temp$class
+table(Idents(temp))
+epi.mic <- subset(temp, idents = 'Epithelium')
+```
+
+#### Isolate Mesenchymal to Epithelial Signaling
+
+This just looks at the Mesenchymal-To-Epithelium Cell-To-Cell communication. It predominantly captures signal due to altered cellular character. It does not appropriately capture altered cell-signaling cues due to altered cell population representation, but it MAY capture signal present in this cross DUE to the addition of unseen cells outside of this cross (i.e., it could change with/without the presence of macrophages, even though there will be no data FROM macrophages in this object.)
+
+```{r}
+temp <- global.connectomics$CellToCell$alra
+Idents(temp) <- temp$class.Joint
+table(Idents(temp))
+mes.epi <- subset(temp,idents = 'Mesenchyme - Epithelium')
+```
+
+Ok, now we have isolated our data of interest. Next, let's visualize each data set:
+
+#### Mesenchymal Influence
+
+```{r}
+mes.inf <- ScaleData(mes.inf)
+mes.inf <- FindVariableFeatures(mes.inf)
+mes.inf <- RunPCA(mes.inf,npcs = 100)
+ElbowPlot(mes.inf,ndims = 100)
+mes.inf <- RunUMAP(mes.inf,dims = 1:25)
+
+p1 <- DimPlot(mes.inf,group.by = 'Dataset2',cols=color_pals$dataset_colors,raster=F,shuffle = T)
+p2 <- DimPlot(mes.inf,group.by = 'orig.ident',cols = color_pals$sample_colors,raster=F,shuffle = T)
+p3 <- DimPlot(mes.inf,group.by = 'class',cols = color_pals$class_colors,raster=F,shuffle = T)
+p4 <- DimPlot(mes.inf,group.by = 'SendingType',cols = color_pals$type_colors,raster=F,shuffle = T)
+
+pdf(file='MesenchymeInfluence.UMAPS.pdf',width=10,height=8)
+print(plot_grid(p1,p2,p3,p4))
+dev.off()
+
+plot_grid(p1,p2,p3,p4)
+```
+
+I think this look pretty good. Significant tissue-tissue separation, which may be a consequence of real biology or may be batch, we do not know yet.
+
+#### Epithelial Microenvironment
+
+```{r}
+epi.mic <- ScaleData(epi.mic)
+epi.mic <- FindVariableFeatures(epi.mic)
+epi.mic <- RunPCA(epi.mic,npcs = 100)
+ElbowPlot(epi.mic,ndims = 100)
+epi.mic <- RunUMAP(epi.mic,dims = 1:25)
+
+p1 <- DimPlot(epi.mic,group.by = 'Dataset2',cols=color_pals$dataset_colors,raster=F,shuffle = T)
+p2 <- DimPlot(epi.mic,group.by = 'orig.ident',cols = color_pals$sample_colors,raster=F,shuffle = T)
+p3 <- DimPlot(epi.mic,group.by = 'class',cols = color_pals$class_colors,raster=F,shuffle = T)
+p4 <- DimPlot(epi.mic,group.by = 'ReceivingType',cols = color_pals$type_colors,raster=F,shuffle = T)
+
+pdf(file='EpithelialMicroenviornment.UMAPS.pdf',width=10,height=8)
+print(plot_grid(p1,p2,p3,p4))
+dev.off()
+
+plot_grid(p1,p2,p3,p4)
+```
+
+This is actually pretty intresting and I hven't noticed these patterns before. The tissues group more together here. The similarity between Mono + Tri_E vs. Co + Tri_L + Quad is interesting and I suspect relevant.
+
+#### Mesenchymal-Epithelial Communication
+
+```{r}
+mes.epi <- ScaleData(mes.epi)
+mes.epi <- FindVariableFeatures(mes.epi)
+mes.epi <- RunPCA(mes.epi,npcs = 100)
+ElbowPlot(mes.epi,ndims = 100)
+mes.epi <- RunUMAP(mes.epi,dims = 1:25)
+
+p1 <- DimPlot(mes.epi,group.by = 'Dataset2.Sending',cols=color_pals$dataset_colors,raster=F,shuffle = T)
+p2 <- DimPlot(mes.epi,group.by = 'orig.ident',cols = color_pals$sample_colors,raster=F,shuffle = T)
+p3 <- DimPlot(mes.epi,group.by = 'class.Sending',cols = color_pals$class_colors,raster=F,shuffle = T)
+p4 <- DimPlot(mes.epi,group.by = 'class.Receiving',cols = color_pals$class_colors,raster=F,shuffle = T)
+p5 <- DimPlot(mes.epi,group.by = 'SendingType',cols = color_pals$type_colors,raster=F,shuffle = T)
+p6 <- DimPlot(mes.epi,group.by = 'ReceivingType',cols = color_pals$type_colors,raster=F,shuffle = T)
+
+pdf(file='MesenchymalToEpitheliumCommunication.UMAPS.pdf',width=20,height=10)
+print(plot_grid(p1,p2,p3,p4,p5,p6))
+dev.off()
+
+plot_grid(p1,p2,p3,p4,p5,p6)
+```
+
+This is very cool! Looks like there is a clear effect on Mesenchymal-Epithelial communication due to the addition of Macrophages. Let's dig into this specific signal a bit by running a statistical test comparing these two categories:
+
+#### Compare MesEpi with and without macrophages:
+
+First, we want a new meta data category that annotates Tri culture vs. Quad culture. we do this as follows: 
+
+```{r}
+mes.epi$Dataset4 <- NA
+Idents(mes.epi) <- mes.epi$Dataset2.Sending 
+mes.epi <- RenameIdents(mes.epi,
+                        'Tri_E'='Tri',
+                        'Tri_L'='Tri',
+                        'Quad_E'='Quad',
+                        'Quad_L'='Quad')
+mes.epi$Dataset4 <- Idents(mes.epi)
+table(mes.epi$Dataset4)
+```
+
+Now, we can run a marker test comparing these two categories specifically:
+
+```{r}
+mark.mes.epi <- FindAllMarkers(mes.epi,only.pos = T,min.pct = 0.1,logfc.threshold = 0.01)
+mark.mes.epi$ratio <- mark.mes.epi$pct.1/mark.mes.epi$pct.2
+mark.mes.epi$power <- mark.mes.epi$ratio*mark.mes.epi$avg_log2FC
+kable(mark.mes.epi %>% group_by(cluster) %>% top_n(50,ratio) %>% arrange(desc(ratio)))
+```
+
+Not bad! Some very interesting signals in there. Let's remove signaling mediated by integrins, which are less interesting for this project.
+
+```{r}
+MOI <- mark.mes.epi[-grep('Itg',mark.mes.epi$gene),]
+MOI <- MOI %>% group_by(cluster) %>% top_n(50,ratio) %>% arrange(desc(ratio))
+kable(MOI)
+```
+
+
+So there is definitely a huge activation of WNT family signaling here. Wnt7a, Wnt7b, via Lrp5/6. Rspo1-Lgr4 (I know the ligand well, but not the receptor!) Also mild upregulation of Fgf1/2/7 signaling via Fgfr3. Also a big upregulation of Hbegf-Egfr. The tri-culture elevation of Dlk1-Notch1 is interesting, not sure what it means. Nrg1-Erbb3 also upregulated in Quad. The Csf2-Csf2ra upregulated in Quad might be relevant to macrophage biology. Efna4—Epha7 also upregulated, it is a spatial guidance molecule implicated in tissue morphogenesis, as is Sema4b—Dcbld2, which is acting through a receptor I have never seen before. Il11—Il6st also upregulated. Immune recruitment / activation? Not sure what this mechanism does.
+
+#### Let's make some feature plots of Mes-Epi signals that are upregulated in Quad culture as compared to Tri, like this:
+
+```{r warning=FALSE}
+quick.function <- function(mech){
+p1 <- FeaturePlot(mes.epi,mech)
+p2 <- VlnPlot(mes.epi,mech)
+plot_grid(p1,p2)
+}
+mech <- 'Fgf7—Fgfr3'
+quick.function(mech)
+
+mech <- 'Wnt7a—Lrp6'
+quick.function(mech)
+
+mech <- 'Wnt7b—Lrp5'
+quick.function(mech)
+
+mech <- 'Csf2—Csf2ra'
+quick.function(mech)
+
+mech <- 'Fgf2—Fgfr3'
+quick.function(mech)
+
+mech <- 'Fgf2—Fgfr2'
+quick.function(mech)
+
+mech <- 'Hbegf—Egfr'
+quick.function(mech)
+
+mech <- 'Il11—Il6st'
+quick.function(mech)
+
+mech <- 'Rspo1—Lgr4'
+quick.function(mech)
+
+```
+
+#### Next, let's look at some Tri culture Mes-Epi markers:
+
+Not sure what Dlk1 is doing or if it is relevant:
+
+```{r warning=FALSE}
+mech <- 'Dlk1—Notch1'
+quick.function(mech)
+```
+
+Thbs2 is Themis' pro-fibrotic, anti-angiogenic matrix molecule that he knocks out, wild that it is here so clearly:
+
+```{r}
+mech <- 'Thbs2—Cd47'
+quick.function(mech)
+```
+
+Sfrp1—Fzd6 is an extracellular binder of WNT ligands that sequesters them outside of cells and rpevents them from binding, it is net anti-WNT:
+
+```{r}
+mech <-'Sfrp1—Fzd6'
+quick.function(mech)
+```
+
+Cthrc1—Fzd6 is a major matrix molecule implicated in fibrosis (ligand): https://www.nature.com/articles/s41467-020-15647-5 and the receptor is a critical cue for alveolar regeneration by epithelium: https://www.cell.com/cell/pdf/S0092-8674(23)00541-X.pdf
+
+```{r}
+mech <-'Cthrc1—Fzd6'
+quick.function(mech)
+```
+
+#### My summary, in a nutshell:
+
+Tri-culture has major upregualtion of fibrotic pathways, genes, and matrix molecules. Adding macrophages basically removes this signal.
+
+Adding macrophages in Quad-culture promotes significant upregulation of WNT-signaling and FGF-family signaling. We also see the expression of prominent sptial-guidance molecules crucial to local tissue organziation that we know from normal alveolar homeostasis.
