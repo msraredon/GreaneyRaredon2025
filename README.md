@@ -5,14 +5,14 @@ Scripts for Greaney & Raredon et al 2024
 "FASTQ_to_Seurat" contains scripts used for data alignment, extraction, and import into R.
 
 "Data_Filtration_Cleaning" contains scripts used to filter and to clean the data.  
-* env.R -   
-* filter.R -   
-* clean.R -   
-* explore.R -   
+* env.R - Defining conda environment & R session info for data cleaning, exploration, analysis, and figure plotting  
+* filter.R - Initial object filtration for taking STARSolo DGEs to filtered objects  
+* clean.R - Cleaning of filtered objects  
+* explore.R - Cleaned objects integrated to yield class objects  
 
 "Phenotype_Analysis" contains scripts used to perform class-wise integration, layered cell class and type annotations / metadata construction, transcriptomic statistical analysis, and transcriptomic figure construction for publication.  
-* focus.R -   
-* figure.R -   
+* focus.R - Focused analyses of class objects, including archetype definition, pseudotime via slingshot, & RNA velocity via velocyto-R  
+* figure.R - Published figure plotting  
 
 "NICHES_Analysis" contains scripts used to create NICHES connectivity data, preliminary exploration of cell-to-cell signaling landscape, archetype analysis, statistical analysis, and figure construction for publication.   
 

@@ -1,7 +1,6 @@
 #### FILTER
 #### Code for publication describing initial object filtration
 #### Replicable method for taking STARSolo DGEs to filtered objects
-####    including data filtration supplemental figures
 
 
 

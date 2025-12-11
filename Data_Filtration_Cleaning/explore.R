@@ -1,5 +1,5 @@
 #### EXPLORE
-#### Code for publication unifying all 'explore' scripts
+#### Code for publication unifying cleaned objects into integrated class objects
 #### Replicable method for exploring and integrating cleaned objects by class
 
 

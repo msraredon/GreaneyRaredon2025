@@ -1,5 +1,5 @@
 #### FOCUS
-#### Code for publication unifying all 'focus' scripts
+#### Code for publication of focused analyses on class objects
 #### Replicable methods for focused analyses of classed objects,
 ####    including archetype definition, pseudotime via slingshot, & RNA velocity via velocyto-R
 
@@ -80,7 +80,6 @@ midrow2 <- plot_grid(p6,p7,p8,ncol=3)
 midrow3 <- plot_grid(p9,p10,p11,ncol=3)
 lastrow <- plot_grid(p12,p13,p14,ncol=3)
 
-# Cowplot all panels
 plots <- list(toprow,midrow1,midrow2,midrow3,lastrow)
 png(paste(dir_name,tag,'_integrated7_allplots.png',sep=""), width = 2000,height=2750)
 plot_grid(plotlist=plots,ncol=1,rel_heights = c(2,1,2,2,2))
@@ -429,7 +428,6 @@ midrow2 <- plot_grid(p6,p7,p8,ncol=3)
 midrow3 <- plot_grid(p9,p10,p11,ncol=3)
 lastrow <- plot_grid(p12,NULL,ncol=2,rel_widths=c(2,1))
 
-# Cowplot all panels
 plots <- list(toprow,midrow1,midrow2,midrow3,lastrow)
 png(paste(dir_name,tag,'_integrated4_allplots.png',sep=""), width = 2000,height=2750)
 plot_grid(plotlist=plots,ncol=1,rel_heights = c(2,1,2,2,1))
@@ -544,7 +542,7 @@ save(sling.metadata,file = paste("sling.metadata.",Sys.Date(),".Robj",sep=""))
 
 
 
-### RNA Velocity via Velocyto on final epithelial object
+### RNA Velocity via Velocyto on final endothelial object
 ## Velocyto-R v0.6 & Pagoda2
 # Load and prepare object and color palettes (see above)
 
@@ -700,7 +698,6 @@ midrow2 <- plot_grid(p6,p7,p8,ncol=3)
 midrow3 <- plot_grid(p9,p10,p11,ncol=3)
 lastrow <- plot_grid(p12,p13,NULL,ncol=3)
 
-# Cowplot all panels
 plots <- list(toprow,midrow1,midrow2,midrow3,lastrow)
 png(paste(dir_name,tag,'_integrated4_allplots.png',sep=""), width = 2000,height=2750)
 plot_grid(plotlist=plots,ncol=1,rel_heights = c(2,1,2,2,2))
@@ -845,7 +842,6 @@ p4 <- FeaturePlot(object,'Lineage2_ps',cols = colorRampPalette(brewer.pal(11,'Sp
 p5 <- FeaturePlot(object,'Lineage3_ps',cols = colorRampPalette(brewer.pal(11,'Spectral')[-6])(100),pt.size=pt.size,label = T,repel=T,order=T)
 lastrow <- plot_grid(p3,p4,p5,ncol=3)
 
-# Cowplot all panels
 png(paste(dir_name,'sling_int_allplots_1.png',sep='_'), width = 2000,height=1250)
 plot_grid(toprow,lastrow,nrow=2)
 dev.off()
@@ -1039,7 +1035,7 @@ dev.off()
 
 
 
-### RNA Velocity via Velocyto on final epithelial object
+### RNA Velocity via Velocyto on final mesenchymal object
 ## Velocyto-R v0.6 & Pagoda2
 # Load and prepare object and color palettes (see above and the following)
 load('./mes.clean.annotations_2023-04-03.Robj')
@@ -1270,7 +1266,6 @@ midrow2 <- plot_grid(p6,p7,p8,ncol=3)
 midrow3 <- plot_grid(p9,p10,p11,ncol=3)
 lastrow <- plot_grid(p12,p13,p14,p15,ncol=4)
 
-# Cowplot all panels
 plots <- list(toprow,midrow1,midrow2,midrow3,lastrow)
 png(paste(dir_name,tag,'_integrated8_allplots.png',sep=""), width = 2000,height=2750)
 plot_grid(plotlist=plots,ncol=1,rel_heights = c(2,1,2,2,2))
@@ -1426,58 +1421,13 @@ midrow2 <- plot_grid(p6,p7,p8,ncol=3)
 midrow3 <- plot_grid(p9,p10,p11,ncol=3)
 lastrow <- plot_grid(p12,p13,p14,ncol=3)
 
-# Cowplot all panels
 plots <- list(toprow,midrow1,midrow2,midrow3,lastrow)
 png(paste(dir_name,'mac',tag,'integrated_allplots.png',sep="_"), width = 2000,height=2750)
 plot_grid(plotlist=plots,ncol=1,rel_heights = c(2,1,2,2,2))
 dev.off()
 
 
-#### LEFT OFF HERE ####
-
-
-### Evaluate clusters - by seurat_clusters
-p1 <- UMAPPlot(mac,group.by = 'seurat_clusters',label = T) + labs(title = dir_name,subtitle = paste("PC's =",pcs,"\nRes =",res),caption = paste("nCells =",ncol(mac))) +
-        theme(plot.title = element_text(size = 24,hjust = 0),plot.subtitle = element_text(size = 20),plot.caption = element_text(size = 18,color='red')) + NoAxes()
-p2 <- UMAPPlot(mac,group.by = 'Sample') + labs(title = dir_name,subtitle = paste("PC's =",pcs,"\nRes =",res)) + NoAxes() +
-        theme(plot.title = element_text(size = 24,hjust = 0),plot.subtitle = element_text(size = 20))
-p3 <- UMAPPlot(mac,group.by = 'putative_labels') + labs(title = dir_name,subtitle = paste("PC's =",pcs,"\nRes =",res)) + NoAxes() +
-        theme(plot.title = element_text(size = 24,hjust = 0),plot.subtitle = element_text(size = 20))
-toprow <- plot_grid(p1,p2,p3,NULL,ncol=4)
-
-clusters <- levels(mac$seurat_clusters)
-goi <- c(); marks <- c(); genes <- c()
-myplots <- vector('list',length(clusters))
-for (i in 1:length(clusters)) {
-    cluster <- clusters[[i]]
-    message(cluster)
-
-    goi <- markers[which(markers$cluster == cluster),]
-    goi <- goi[1:15, ]  # 15
-    row.names(goi) <- goi$gene
-    marks <- round(goi[, 2:5], digits = 4)
-    marks$ratio <- round(goi$ratio, digits = 4)
-    marks <- as.data.frame(marks)
-    p <- tableGrob(marks,theme = ttheme_minimal(base_size = 16))
-
-    #marks <- marks[order(marks$avg_log2FC),]
-    genes <- row.names(marks)
-    q <- FeaturePlot(mac,c(genes[1:4]),ncol=2,order=T)
-    myplots[[i]] <- plot_grid(p,q,ncol=2)
-}
-lastrow <- plot_grid(plotlist=myplots,ncol=2,labels=paste('Cluster',clusters),label_size = 40)
-
-# Cowplot all panels
-plots <- list(toprow,lastrow)
-png(paste(dir_name,'mac',tag,'integrated_clusters_1.png',sep="_"), width = 2000,height=2750)
-plot_grid(plotlist=plots,ncol=1,rel_heights = c(1,5))
-dev.off()
-
-
-
-
-
-### Investigate markers - by Dataset3 (Start/Eng)
+## Investigate DEGs between macrophages from starting BAL and engineered lungs
 Idents(mac) <- mac$Dataset2
 mac <- RenameIdents(mac,
                 'Tri_L'='Eng',
@@ -1491,13 +1441,8 @@ markers <- FindAllMarkers(mac, only.pos = T)
 markers$ratio <- markers$pct.1/markers$pct.2
 markers <- markers[order(-markers$ratio),]
 save(markers,file=paste(dir_name,'mac','seurat.objs.int.marks',Sys.Date(),"Robj",sep="."))
-write.table(markers,file = paste(dir_name,'mac','seurat.objs.int.marks',Sys.Date(),"txt",sep="."),sep="\t")
-load('./imm.mac.seurat.objs.int.marks..2023-01-30.Robj')  # differentiate macrophages by Start/Eng
 
-markers[which(markers$gene == 'Il10'),]
-
-
-## Evaluate clusters - by Dataset3 (Start/Eng)
+# Evaluate clusters
 p1 <- UMAPPlot(mac,group.by = 'Dataset3',label = T) + labs(title = dir_name,subtitle = paste("PC's =",pcs,"\nRes =",res),caption = paste("nCells =",ncol(mac))) +
         theme(plot.title = element_text(size = 24,hjust = 0),plot.subtitle = element_text(size = 20),plot.caption = element_text(size = 18,color='red')) + NoAxes()
 p2 <- UMAPPlot(mac,group.by = 'Sample') + labs(title = dir_name,subtitle = paste("PC's =",pcs,"\nRes =",res)) + NoAxes() +
@@ -1532,18 +1477,16 @@ for (i in 1:length(clusters)) {
 }
 lastrow <- plot_grid(plotlist=myplots,ncol=2,labels=paste('Cluster',clusters),label_size = 40)
 
-# Cowplot all panels
 plots <- list(toprow,lastrow)
 png(paste(dir_name,'mac',tag,'integrated_clusters_3.png',sep="_"), width = 2000,height=2750)
 plot_grid(plotlist=plots,ncol=1,rel_heights = c(1,5))
 dev.off()
 
 
-
-
-### Investigate M1/M2 Mac_Alv heterogeneity - by Start/Eng
+## Investigate M1/M2 heterogeneity in macrophages
 DefaultAssay(mac) <- "RNA"
-## Shaykhiev 2009 (human) - lung-specific
+
+# Shaykhiev 2009 (human) - lung-specific
 m1.genes <- c('Fcgr3a','Fcgr2a','Fcgr1a','Il15ra','C3ar1','Cd69','Cd80','Cd86','Tlr2','Tlr4','Icam1','Il1b',
     'Il6','Il12b','Il18','Il23a','Il32','Tnf','Tnfsf10','Tnfaip6','Cxcl1','Cxcl9','Cxcl10','Cxcl11','Ccl4',
     'Ccl5','Ccl20','Gbp1','Gbp2','Gbp3','Gbp4','Gbp5','Acod1','Irf1','Irf7','Socs3','Nos2','Pde4b','Apol3','Cfb')
@@ -1572,14 +1515,9 @@ mac.metadata <- mac@meta.data
 mac.metadata <- mac.metadata[c(tosave)]
 save(mac.metadata,file = paste("mac.metadata.",Sys.Date(),".Robj",sep=""))
 
-#load('./mac.metadata.2023-02-03.Robj')  # calculated incorrectly!
-load('./mac.metadata.2023-03-09.Robj')  # calculated correctly w list()
 object <- AddMetaData(object,metadata = mac.metadata,col.name=names(mac.metadata))
 
-
-
-
-## Weagel 2015
+# Weagel 2015
 m1.genes <- c('Il12a','Il12b','Il23a','Tnf','Irf3','Jun','Nfkb1','Nfkb2','Cxcl10',
     'Nos2','Stat1','Cxcl9','Irf1','Socs1')
 m2a.genes <- c('Ccl17','Arg1','Irf4','Il10','Socs3','Tgfb1','Tgfb2')
@@ -1621,8 +1559,7 @@ png(paste(dir_name,'mac',tag,'integrated_m1m2_4.png',sep="_"), width = 1000,heig
 plot_grid(plotlist=plots,ncol=1)
 dev.off()
 
-
-## Murray 2014 - Not great
+# Murray 2014
 m1.genes <- c('Stat1','Socs1','Nfkbiz','Irf5','Irf1','Tnf','Il6','Il27','Il23a',
     'Il12a','Il1b','Il12b','Cxcl10','Cxcl8','Ccl5','Cxcl9','Cxcl11','Marco',
     'Mmp9','Arg1','Nos2','Ido1','Kynu','Ptx3','Gbp1','Ccr7','Cd40')
@@ -1671,54 +1608,146 @@ dev.off()
 
 
 
+### Pseudotime via Slingshot on final macrophage object
+## Slingshot v2.2.1
+# Load and prepare object and color palettes 
+dir_name <- c('imm')
+load('./imm.sub.clean.annotations.2023-04-03.Robj')  # 5199 macophages
+object <- imm.sub ; rm(imm.sub)
+load('./mac.metadata.2023-03-09.Robj')
+object <- AddMetaData(object,metadata = mac.metadata,col.name=names(mac.metadata))
+rm(mac.metadata)
+DefaultAssay(object) <- "RNA"
+load('../all.color_palettes_1.R')
+sample_colors <- color_pals$sample_colors
+names(sample_colors)[6] <- "BAL"
+dataset_colors <- color_pals$dataset_colors
+class_colors <- color_pals$class_colors
+class <- dir_name
+object$Final1 <- factor(object$Final1,levels=c('Cycling','Alveolar_Naive',
+    'Alveolar_Activated','Interstitial'))
+pcs <- 9
+res <- 0.5
+starteng_colors <- c('Start'=sample_colors[['BAL']],'Eng'=dataset_colors[['Quad_E']])
+if (class == 'imm'){
+        types <- levels(object$Final1)  # n=4
+        cols <- c('#8DA0CB','#66C2A5','#E78AC3','#FC8D62')  # '#7570B3','#B3B3B3','#FFD92F','#E7298A','#A6D854','#66A61E'
+        type_colors <- cols
+        names(type_colors) <- types       
+} else if (class != 'imm'){
+        types <- levels(object$putative_labels)  # n<10
+        cols <- brewer.pal(length(levels(object$putative_labels)),'Set2')
+        type_colors <- cols
+        names(type_colors) <- types
+}
+
+# Run Slingshot pipeline
+Idents(object) <- object$Final1
+DefaultAssay(object) <- "integrated"
+slobject <- as.SingleCellExperiment(object,assay = c('integrated','RNA'))
+
+slobject <- slingshot(slobject,reducedDim = reducedDim(slobject,'PCA')[,1:9],
+    approx_points = 40,clusterLabels = 'Final1')
+
+colors <- colorRampPalette(brewer.pal(11,'Spectral')[-6])(100)
+plotcol <- colors[cut(slobject$slingPseudotime_1, breaks=100)]
+
+png(paste(dir_name,'sling_int_umap_1.png',sep='_'), width = 800, height = 800)
+plot(reducedDims(slobject)$UMAP, col = plotcol, pch=16, asp = 1)
+dev.off()
+
+sling.metadata <- slingPseudotime(slobject)
+colnames(sling.metadata) <- paste0(colnames(sling.metadata),'_ps')
+
+sling.metadata2 <- slingCurveWeights(slobject)
+colnames(sling.metadata2) <- paste0(colnames(sling.metadata2),'_cw')
+
+sling.metadata <- data.frame(sling.metadata,sling.metadata2)
+
+save(sling.metadata,file = paste("sling.metadata.",Sys.Date(),".Robj",sep=""))
+
+object <- AddMetaData(object,metadata = sling.metadata,col.name=names(sling.metadata))
+
+# Featureplots of pseudotime by lineage
+if (ncol(object) < 10000){pt.size=1.5} else if (ncol(object) >= 10000){pt.size=NULL}
+p1 <- UMAPPlot(object,group.by = 'Final1',cols = type_colors,pt.size=pt.size) + 
+        labs(title = class,subtitle = paste("PC's =",pcs,"\nRes =",res),caption = paste("nCells =",ncol(object))) + 
+        theme(plot.title = element_text(size = 24,hjust = 0),plot.subtitle = element_text(size = 20),plot.caption = element_text(size = 18,color='red'))
+p2 <- UMAPPlot(object,group.by = 'Sample',cols = sample_colors[levels(object$Sample)],pt.size=pt.size) + 
+        labs(title = class,subtitle = paste("PC's =",pcs,"\nRes =",res),caption = c(' ')) + 
+        theme(plot.title = element_text(size = 24,hjust = 0),plot.subtitle = element_text(size = 20),plot.caption = element_text(size = 18,color='red'))
+toprow <- plot_grid(p1,p2,ncol=2)
+p3 <- FeaturePlot(object,'Lineage1_ps',cols = colorRampPalette(brewer.pal(11,'Spectral')[-6])(100),pt.size=pt.size,label = T,repel=T,order=T)
+p4 <- FeaturePlot(object,'Lineage2_ps',cols = colorRampPalette(brewer.pal(11,'Spectral')[-6])(100),pt.size=pt.size,label = T,repel=T,order=T)
+lastrow <- plot_grid(p3,p4,ncol=2)
+
+png(paste(dir_name,'sling_int_allplots_1.png',sep='_'), width = 1333,height=1250)
+plot_grid(toprow,lastrow,nrow=2)
+dev.off()
+
+save(slobject,file = paste(dir_name,"seurat.objs.sling",Sys.Date(),"Robj",sep="."))
 
 
 
+### RNA Velocity via Velocyto on final immune object
+## Velocyto-R v0.6 & Pagoda2
+# Load and prepare object and color palettes (see above)
+library(velocyto.R)
+library('pagoda2')
 
-# focus_imm_7.R
-#### Focused Analysis of Engineered Immune
-## Parse Macrophage Heterogeneity
+# Setup with Pagoda2
+DefaultAssay(object) <- "integrated"
+object <- FindVariableFeatures(object)
+length(object@assays$RNA@var.features)
+object <- ScaleData(object)
+nrow(GetAssayData(object,slot="scale.data"))
+
+r <- Pagoda2$new(as(GetAssayData(object,slot="scale.data"),"dgCMatrix"),modelType="raw")
+r$reductions[['PCA']] <- object@reductions$pca
+r$reductions[['umap']] <- object@reductions$umap
+r$embeddings[['PCA']][['umap']] <- Embeddings(object[['umap']])
+
+cluster.label <- object$Final35
+cell.colors <- sccore:::fac2col(cluster.label,
+        level.colors=type_colors)
+
+png(paste(dir_name,'_pagumap_2.png',sep=''), width = 800, height = 800)
+r$plotEmbedding(type='PCA',embeddingType='umap',colors=cell.colors,mark.clusters=T,
+        min.group.size=10,shuffle.colors=F,mark.cluster.cex=1,alpha=0.3,
+        main='cell clusters')
+dev.off()
+
+# Calculating Velocity
+emat <- object$spliced; nmat <- object$unspliced;
+emat <- emat[,rownames(r$counts)]; nmat <- nmat[,rownames(r$counts)];
+
+cluster.label <- object$Final35
+cell.colors <- sccore:::fac2col(cluster.label,
+        level.colors=type_colors)
+
+cell.dist <- as.dist(1-armaCor(t(r$embeddings[['PCA']][['umap']])))
+
+emat <- filter.genes.by.cluster.expression(emat,cluster.label,min.max.cluster.average = 1)
+nmat <- filter.genes.by.cluster.expression(nmat,cluster.label,min.max.cluster.average = 0.5)
+length(intersect(rownames(emat),rownames(nmat)))
+# [1] 787
+
+fit.quantile <- 0.02
+rvel.cd <- gene.relative.velocity.estimates(emat,nmat,deltaT=1,kCells=25,
+        cell.dist=cell.dist,fit.quantile=fit.quantile)
+emb <- r$embeddings$PCA$umap
+
+x <- show.velocity.on.embedding.cor(emb,rvel.cd,n=1000,n.cores=1,scale='sqrt',
+        cell.colors=ac(cell.colors,alpha=0.5),cex=0.8,arrow.scale=8,show.grid.flow=T,
+        min.grid.cell.mass=5,grid.n=20,arrow.lwd=1,do.par=T,cell.border.alpha = 0.1)
+
+res <- 400
+png(paste(dir_name,'_pagvel_4.png',sep=''), width=650*res/72, height=650*res/72,res=res)
+show.velocity.on.embedding.cor(emb,rvel.cd,n=800,n.cores=1,scale='sqrt',cc=x$cc,
+        cell.colors=ac(cell.colors),cex=1,arrow.scale=15,show.grid.flow=T,
+        min.grid.cell.mass=25,grid.n=19,arrow.lwd=4,do.par=F,cell.border.alpha = 0.1,
+        xlab = c('UMAP_1'),ylab= c('UMAP_2'))
+dev.off()
 
 
-# focus_imm_8.R
-#### Focused Analysis of Engineered Immune
-## Pseudotime by Slingshot & Velocyto
 
-
-# focus_imm_9.R
-#### Focused Analysis of Engineered Immune
-## Re-do Velocyto
-
-
-
-
-#### ADDITIONAL ####
-
-# focus_rus_1.R
-#### Focused Analysis guided by Ruslan
-## May 2024, Regional ECM expression in engineered epithelium & ECM gene list
-
-
-# focus_rus_2.R
-#### Focused Analysis guided by Ruslan
-## May 2024, Generating native v2 object to evaluate regional ECM expression in native
-
-
-# focus_rus_3.R
-#### Focused Analysis guided by Ruslan
-## May 2024, Regional ECM expression in native & engineered epithelium
-
-
-# focus_rus_4.R
-#### Focused Analysis guided by Ruslan
-## June 2024, Regional ECM expression in native & engineered epithelium WO starting peBC
-
-
-# focus_rus_5.R
-#### Focused Analysis guided by Ruslan
-## June 2024, ECM Figure
-
-
-# focus_rus_6.R
-#### Focused Analysis guided by Ruslan
-## June 2024, Functional Delegation
