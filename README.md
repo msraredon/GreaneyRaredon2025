@@ -22,7 +22,7 @@ Sample names:
 * BC1P6	Starting peBC, passage 6  
 * FB13	Starting fibroblasts, isolation #13  
 * FB14	Starting fibroblasts, isolation #14  
-* MacAlv	Bronchoalveolar lavage (may also be referred to as 'BAL')  
+* MacAlv	Bronchoalveolar lavage (also called 'BAL')  
 * RLMVEC	Starting endothelium  
 * BCL5	Epithelial-only Engineered Lung  
 * BEF1	Epi-Endo-Mes Engineered Lung, early version #1  
