@@ -1,5 +1,5 @@
 # GreaneyRaredon2024
-Scripts for Greaney & Raredon et al 2024
+Scripts for Greaney & Raredon et al 2025
 
 
 "FASTQ_to_Seurat" contains scripts used for data alignment, extraction, and import into R.
